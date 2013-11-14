@@ -66,7 +66,17 @@ int main(int argc, char* argv[])
 			((JvmExecuter*)new JvmInterpreter(ClassLoader::Instance(), Space::instance()));
 
 	for (int i = 0 ; i < 2 ; i++) {
-		int result = JvmExecuter::execute_return_int(cf,"accessingArray","(I[I)I",exec);
+		int result;
+		JvmExecuter::execute_return_int(cf,"accessingArray","(I[I)I",(JvmJit*)exec, [&result] (JvmExecuter* exec, void * addr) {
+			Objeto array = exec->createNewRawArray(10, 10);
+			int value1 = 1;
+			int value2 = 2;
+			ObjectHandler::instance()->assignArrayElement(array, 0 , &value1);
+			ObjectHandler::instance()->assignArrayElement(array, 1 , &value2);
+			int(*a)(int, Objeto) = (int(*)(int,Objeto))addr;
+			int r = a(1,array);
+			result = r;
+		});
 
 		cout << "Results : " << result << '\n';
 	}

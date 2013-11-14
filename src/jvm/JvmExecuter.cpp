@@ -56,21 +56,6 @@ namespace jvm {
 			throw new exception();
 	}
 
-	int JvmExecuter::execute_return_int(ClassFile* cf, const char* method, const char* description,
-				JvmExecuter* exec) {
-			u2 index = cf->getCompatibleMethodIndex(method, description);
-			if (index < 0 || index >= cf->methods.size())
-				throw new exception();
-
-			MethodInfo* mi = cf->methods[index];
-
-			if ((mi->access_flags & ACC_STATIC)) {
-				return exec->execute_int(cf, mi);
-			} else
-				throw new exception();
-		}
-
-
 
 
 	int JvmExecuter::countParameters(string s) {

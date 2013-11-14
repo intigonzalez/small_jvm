@@ -33,7 +33,12 @@ public:
 	virtual ~JvmJit();
 	virtual void initiateClass(ClassFile* cf);
 	virtual void execute(ClassFile* cf, MethodInfo* method);
-	virtual int execute_int(ClassFile* cf, MethodInfo* method);
+
+	template <class Function>
+	void execute_int(ClassFile* cf, MethodInfo* method, Function fn){
+		void* addr = compile(cf, method);
+		fn(this, addr);
+	}
 };
 
 } /* namespace jit */

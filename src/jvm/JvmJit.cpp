@@ -33,17 +33,6 @@ void JvmJit::execute(ClassFile* cf, MethodInfo* method){
 
 }
 
-int JvmJit::execute_int(ClassFile* cf, MethodInfo* method){
-	void* addr = compile(cf, method);
-	Objeto array = JvmExecuter::createNewRawArray(10, 10);
-	int value1 = 1;
-	int value2 = 2;
-	ObjectHandler::instance()->assignArrayElement(array, 0 , &value1);
-	ObjectHandler::instance()->assignArrayElement(array, 1 , &value2);
-	int(*a)(int, Objeto) = (int(*)(int,Objeto))addr;
-	return a(1,array);
-}
-
 void JvmJit::toQuadruplus(ClassFile* cf, MethodInfo* method, jit::Routine& procedure) {
 	stack<jit_value> values;
 	vector< pair< int, int > > bytecode2qua;
