@@ -11,10 +11,12 @@
 #include "JvmExecuter.h"
 #include "jit/Quadru.h"
 #include "jit/CodeSectionMemoryManager.h"
+#include  "../utilities/ThreadPool.h"
 
 #include <map>
 #include <utility>
 #include <string>
+#include <functional>
 
 using namespace std;
 
@@ -23,22 +25,17 @@ namespace jvm {
 class JvmJit: public jvm::JvmExecuter {
 private:
 
-	map< pair<string,string> , void* > compiledMethods;
+	std::unique_ptr<ThreadPool> pool;
 
 	jit::CodeSectionMemoryManager codeSection;
 
 	void* compile(ClassFile* cf, MethodInfo* method);
-	jit::Routine toQuadruplus(ClassFile* cf, MethodInfo* method);
-
-	jit::jit_value getConstant(ClassFile* cf, u2 index, CodeAttribute* caller);
 public:
 	JvmJit(ClassLoader* loader, Space* space);
 	virtual ~JvmJit();
 	virtual void initiateClass(ClassFile* cf);
-	virtual void execute(ClassFile* cf, MethodInfo* method) {};
 
-	template <class Function>
-	void execute(ClassFile* cf, MethodInfo* method, Function fn){
+	virtual void execute(ClassFile* cf, MethodInfo* method, std::function<void(JvmExecuter*, void* addr)> fn){
 		void* addr = compile(cf, method);
 		fn(this, addr);
 	}

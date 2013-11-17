@@ -19,6 +19,7 @@
 #include <vector>
 #include <iostream>
 
+
 #include "../../utilities/TemporaryFile.h"
 
 namespace jit {
@@ -267,11 +268,12 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager& manager
 	file.close();
 	std::string output = file.getFilePath().substr(0, file.getFilePath().size() - 4) + ".bin";
 	std::string command = "nasm -f bin -o " + output + " " + file.getFilePath();
-	std::cout << command << std::endl;
+
 	int status = system(command.c_str());
 
 	std::ifstream file2 (output.c_str(), std::ios::in|std::ios::binary);
 	buf = manager.getChunck(4096);
+	//std::cout << command << " " << buf <<  std::endl;
 	file2.read((char*)buf, 4096);
 	file2.close();
 

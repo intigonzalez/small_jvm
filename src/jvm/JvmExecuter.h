@@ -10,6 +10,7 @@
 
 #include <map>
 #include <vector>
+#include <functional>
 
 #include "../jvmclassfile/classfile.h"
 #include "../jvmclassfile/classloader.h"
@@ -50,16 +51,10 @@ namespace jvm {
 			JvmExecuter(ClassLoader* loader, Space* space);
 			virtual ~JvmExecuter();
 
-			virtual void execute(ClassFile* cf, MethodInfo* method) = 0;
+			virtual void execute(ClassFile* cf, MethodInfo* method, std::function<void(JvmExecuter*, void* addr)> fn) = 0;
 
-			//template <class Function>
-			//int execute_int(ClassFile* cf, MethodInfo* method, Function fn) = 0;
-
-			static void execute(ClassFile* cf, const char* method, const char* description, JvmExecuter* exec);
-
-			template <class Executer, class Function>
 			static void execute(ClassFile* cf, const char* method, const char* description,
-					Executer exec, Function fn) {
+					JvmExecuter* exec, std::function<void(JvmExecuter*, void* addr)> fn) {
 				u2 index = cf->getCompatibleMethodIndex(method, description);
 				if (index < 0 || index >= cf->methods.size())
 					throw new exception();
@@ -72,11 +67,7 @@ namespace jvm {
 					throw new exception();
 			}
 
-			// FIXME: Initializing new loaded classes
-			static void execute(ClassFile* cf, JvmExecuter* exec);
-
 			static int countParameters(string s);
-
 
 			Type* getType(string javaDescription);
 			Type* buildInMemoryClass(ClassFile* cf);

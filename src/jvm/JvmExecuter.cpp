@@ -38,26 +38,6 @@ namespace jvm {
 
 	}
 
-	void JvmExecuter::execute(ClassFile* cf, JvmExecuter* exec) {
-		execute(cf, "main", "([Ljava/lang/String;)V", exec);
-	}
-
-	void JvmExecuter::execute(ClassFile* cf, const char* method, const char* description,
-			JvmExecuter* exec) {
-		u2 index = cf->getCompatibleMethodIndex(method, description);
-		if (index < 0 || index >= cf->methods.size())
-			throw new exception();
-
-		MethodInfo* mi = cf->methods[index];
-
-		if ((mi->access_flags & ACC_STATIC)) {
-			exec->execute(cf, mi);
-		} else
-			throw new exception();
-	}
-
-
-
 	int JvmExecuter::countParameters(string s) {
 		if (s == "")
 			return 0;
@@ -135,7 +115,10 @@ namespace jvm {
 		Space::instance()->includeRoot(&classObjects[countOfClassObjects - 1]);
 		u2 index = cf->getCompatibleMethodIndex("<clinit>", "()V");
 		if (index >= 0 && index < cf->methods.size())
-			JvmExecuter::execute(cf, "<clinit>", "()V", this);
+			JvmExecuter::execute(cf, "<clinit>", "()V", this, [](JvmExecuter* exec, void * addr) {
+				void(*mm)() = (void(*)())addr;
+				mm();
+			});
 		return a;
 	}
 

@@ -29,12 +29,7 @@ namespace jvm {
 		push(obj);
 	}
 
-	int JvmInterpreter::execute_int(ClassFile* cf, MethodInfo* method) {
-		execute(cf, method);
-		return this->popI();
-	}
-
-	void JvmInterpreter::execute(ClassFile* cf, MethodInfo* method) {
+	void JvmInterpreter::execute(ClassFile* cf, MethodInfo* method, std::function<void(JvmExecuter*, void* addr)> fn) {
 		RuntimeValue v;
 		Objeto ref;
 		JavaDataType type;
@@ -457,7 +452,7 @@ namespace jvm {
 			pop();
 			setLocal(count - i - 1, type, v);
 		}
-		execute(tmp, mi);
+		execute(tmp, mi, [](JvmExecuter* exec, void * addr) { });
 		exitFrame(caller->max_locals, code->max_locals);
 	}
 
@@ -492,7 +487,7 @@ namespace jvm {
 			pop();
 			setLocal(count - i - 1, type, v);
 		}
-		execute(tmp, mi);
+		execute(tmp, mi, [](JvmExecuter* exec, void * addr) { });
 		exitFrame(caller->max_locals, code->max_locals);
 	}
 
@@ -533,7 +528,7 @@ namespace jvm {
 				newFrame(caller->max_locals);
 				setLocal(0, obj2);
 				setLocal(1, obj);
-				execute(cf2, mi);
+				execute(cf2, mi, [](JvmExecuter* exec, void * addr) { });
 				exitFrame(caller->max_locals, code->max_locals);
 				Space::instance()->removeRoot(&obj);
 			}

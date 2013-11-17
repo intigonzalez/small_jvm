@@ -23,7 +23,7 @@ CodeSectionMemoryManager::CodeSectionMemoryManager(size_t size) {
 }
 
 CodeSectionMemoryManager::~CodeSectionMemoryManager() {
-	munmap(baseAddr, this->size);
+//	munmap(baseAddr, this->size);
 }
 
 void* CodeSectionMemoryManager::getChunck(size_t s) {

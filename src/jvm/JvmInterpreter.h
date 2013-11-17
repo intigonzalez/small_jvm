@@ -13,7 +13,7 @@
 
 #include "../mm/common.h"
 
-
+#include  <functional>
 
 namespace jvm {
 
@@ -34,9 +34,7 @@ namespace jvm {
 		public:
 			JvmInterpreter(ClassLoader* loader, Space* space);
 			virtual ~JvmInterpreter();
-			virtual void execute(ClassFile* cf, MethodInfo* method);
-			virtual int execute_int(ClassFile* cf, MethodInfo* method);
-
+			virtual void execute(ClassFile* cf, MethodInfo* method, std::function<void(JvmExecuter*, void* addr)> fn);
 	};
 
 }
