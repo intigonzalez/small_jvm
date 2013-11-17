@@ -43,7 +43,6 @@ namespace jvm {
 			Objeto classObjects[1000];
 			map<string, int> metaclasses;
 
-
 			virtual void initiateClass(ClassFile* cf) = 0;
 
 			ClassFile* loadAndInit(string class_name);

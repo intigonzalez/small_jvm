@@ -78,8 +78,13 @@ int main(int argc, char* argv[])
 			result = r;
 		});
 
-		cout << "Results : " << result << '\n';
+		cout << "Results : " << result << endl;
 	}
+
+	JvmExecuter::execute(cf,"main","([Ljava/lang/String;)V",(JvmJit*)exec, [] (JvmExecuter* exec, void * addr) {
+		void(*a)(Objeto) = (void(*)(Objeto))addr;
+		a(nullptr);
+	});
 
 	ClassLoader::Release();
 	return 0;

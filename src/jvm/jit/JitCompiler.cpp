@@ -83,14 +83,16 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					index++;
 //					push(getLocalRef(b));
 					break;
-//				case astore_0:
-//				case astore_1:
-//				case astore_2:
-//				case astore_3:
-//					b = opcode - astore_0;
+				case astore_0:
+				case astore_1:
+				case astore_2:
+				case astore_3:
+					b = opcode - astore_0;
+					procedure.jit_assign_local(jit_local_field(b, jit::ObjRef), values.top());
+					values.pop();
 //					setLocal(b, popRef());
-//					index++;
-//					break;
+					index++;
+					break;
 //				case astore:
 //					b = (unsigned char)code->code[index+1];
 //					setLocal(b, popRef());
@@ -319,11 +321,13 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					createNewObject(cf, i2);
 //					index += 3;
 //					break;
-//				case op_newarray:
-//					i2 = code->code[index + 1];
-//					createNewRawArray(i2);
-//					index += 2;
-//					break;
+				case op_newarray:
+					i2 = code->code[index + 1];
+					v = values.top(); values.pop(); // size of the array
+					values.push(procedure.jit_regular_operation(NEW_ARRAY, v, jit_constant(i2), ArrRef));
+					//createNewRawArray(i2);
+					index += 2;
+					break;
 				case arraylength:
 					v = values.top(); values.pop();
 //					i2 = ObjectHandler::instance()->getArrayLength(popRef());

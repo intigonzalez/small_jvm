@@ -32,7 +32,7 @@ public class Uno {
 		int[]aa = new int[10];
 		aa[1] = 1;
  		int r = accessingArray(1, aa);
-		System.out.println(r);
+		//System.out.println(r);
 	}
 
 	public static int algo() {
@@ -121,21 +121,21 @@ public class Uno {
 		for (int j = 0 ; j < 400000 ; j++) {
 		 a[i] += j;
 		 int x = 3;
-		 while (x < j) x++;
-		 if (x > 10)
-		 	a[i] = 4;
+		 //while (x < j) x++;
+		 //if (x > 10)
+		 //	a[i] = 4;
 		 	
 		 	int fib0 = 0;
 		 	int fib1 = 1;
 		 	// calculate fib10
-		 	int index = 10000;
-		 	int actual = 2;
-		 	while (actual <= index) {
-		 		int tmp = fib0 + fib1;
-		 		fib0 = fib1;
-		 		fib1 = tmp;
-		 		actual++;
-		 	}
+		 	//int index = 10000;
+		 	//int actual = 2;
+		 	//while (actual <= index) {
+		 	//	int tmp = fib0 + fib1;
+		 	//	fib0 = fib1;
+		 	//	fib1 = tmp;
+		 	//	actual++;
+		 	//}
 		 	// in fib1 we have the desired value
 		}
 		return a[0] + a[1] + a[i];
