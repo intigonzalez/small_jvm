@@ -21,15 +21,11 @@ bool myfunc(pair<int, int>& pair, int v) {
 	return pair.first < v;
 }
 
-JvmJit::JvmJit(ClassLoader* loader, Space* space) : jvm::JvmExecuter(loader, space) { }
+JvmJit::JvmJit(ClassLoader* loader, Space* space) : jvm::JvmExecuter(loader, space), codeSection(0x100000) { }
 
 JvmJit::~JvmJit() { }
 
 void JvmJit::initiateClass(ClassFile* cf) {
-
-}
-
-void JvmJit::execute(ClassFile* cf, MethodInfo* method){
 
 }
 
@@ -414,7 +410,7 @@ void* JvmJit::compile(ClassFile* cf, MethodInfo* method){
 		procedure.buildControlFlowGraph();
 		procedure.print();
 		Simplex86Generator generator;
-		addr = generator.generate(procedure);
+		addr = generator.generate(procedure, codeSection);
 		method->address = addr;
 	}
 	return addr;

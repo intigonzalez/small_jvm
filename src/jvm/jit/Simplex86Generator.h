@@ -14,6 +14,15 @@
 #include <set>
 #include <fstream>
 
+#include <set>
+#include <map>
+#include <vector>
+#include <iostream>
+#include <algorithm>
+#include <sstream>
+
+#include "../../utilities/TemporaryFile.h"
+
 namespace jit {
 
 class x86Register;
@@ -121,13 +130,17 @@ public:
 
 class ReleaseX86RegisterFunctor {
 private:
-	std::ostream* ofile;
+	std::ostream* stream;
 
 public:
-	ReleaseX86RegisterFunctor(std::ostream& s) :ofile(&s) {}
-	ReleaseX86RegisterFunctor() :ofile(nullptr) {}
+	ReleaseX86RegisterFunctor(std::ostream& s) :stream(&s) {}
+	ReleaseX86RegisterFunctor() :stream(nullptr) {}
 	void operator()(std::string var, std::string reg) {
-		(*ofile) << "mov " << var << "," << reg << '\n';
+		(*stream) << "mov " << var << "," << reg << '\n';
+	}
+
+	std::ostream& S() {
+		return (*stream);
 	}
 };
 
@@ -182,11 +195,11 @@ public:
 	Simplex86Generator();
 	virtual ~Simplex86Generator();
 
-	void* generate(Routine& routine);
+	template <class CodeSectionManager>
+	void* generate(Routine& routine, CodeSectionManager& manager);
 
 private:
 	std::vector<x86Register*> registers;
-	std::ofstream ofile;
 	ReleaseX86RegisterFunctor functor;
 
 	void generateBasicBlock(const Vars& variables, BasicBlock* bb);
@@ -197,6 +210,75 @@ private:
 	x86Register* getRegistersForDiv(const jit_value& operand, const Vars& vars);
 	std::string getDataForDiv(const jit_value& operand, const Vars& vars);
 };
+
+template <class CodeSectionManager>
+void* Simplex86Generator::generate(Routine& routine, CodeSectionManager& manager) {
+	// definition of involved variables
+	Vars variables(routine.countOfParameters);
+	for (unsigned i = 0 ; i < routine.q.size(); i++) {
+		Quadr q = routine.q[i];
+		variables.addVariable(q.op1);
+		variables.addVariable(q.op2);
+		variables.addVariable(q.res);
+	}
+	// init memory buffer
+
+	void *buf = manager.nextAddress();
+	// open file
+	TemporaryFile file(".",".asm");
+	file.open();
+	functor = ReleaseX86RegisterFunctor(file.getFile());
+	// let start generating
+	functor.S() << "BITS 32" << '\n';
+	functor.S() << "ORG " << (unsigned)buf << '\n';
+	functor.S() << "push ebp" << '\n';
+	functor.S() << "mov ebp,esp" << '\n';
+	functor.S() << "sub esp," << variables.variables.size()*4 << '\n';
+
+	// let remove the quad from the routine
+	routine.q.clear();
+
+	// generate in order from the Control-Flow Graph
+	// FIXME : I'm doing big assumptions here
+	// 1 - I'm considering that every basic block will have at most to children
+	// 2 - I'm considering that if the last instruction is conditional jump then
+	// 	   the second edge will be the jump and the first one will be the next
+	//	   instruction (when the condition is false). This assumption holds for
+	//	   my method to build the Control-Flow Graph but it is not general.
+	std::vector<vertex_t> vec;
+	int n = boost::num_vertices(routine.g);
+	bool* mark = new bool[n];
+	for (int i = 0 ; i < n ; ++i) mark[i] = false;
+	mark[0] = true;
+	vec.push_back(0);
+	while (!vec.empty()) {
+		boost::graph_traits<ControlFlowGraph>::out_edge_iterator ai,ai_end;
+		vertex_t v0 = vec.back();
+		std::cout << " Block " << v0 << std::endl;
+		vec.pop_back();
+		BasicBlock* bb = routine.g[v0];
+		generateBasicBlock(variables, bb);
+		for (tie(ai, ai_end) = boost::out_edges(v0, routine.g) ; ai != ai_end ; ++ai) {
+			if (!mark[(*ai).m_target]) {
+				vec.push_back((*ai).m_target);
+				mark[(*ai).m_target] = true;
+			}
+		}
+	}
+
+	file.close();
+	std::string output = file.getFilePath().substr(0, file.getFilePath().size() - 4) + ".bin";
+	std::string command = "nasm -f bin -o " + output + " " + file.getFilePath();
+	std::cout << command << std::endl;
+	int status = system(command.c_str());
+
+	std::ifstream file2 (output.c_str(), std::ios::in|std::ios::binary);
+	buf = manager.getChunck(4096);
+	file2.read((char*)buf, 4096);
+	file2.close();
+
+	return buf;
+}
 
 } /* namespace jit */
 #endif /* SIMPLEX86GENERATOR_H_ */

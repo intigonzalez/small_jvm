@@ -19,12 +19,6 @@
 #include <fstream>
 #include <cstdio>
 
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-
 using namespace std;
 
 namespace jit {
@@ -143,12 +137,12 @@ x86Register* Simplex86Generator::getRegister(const jit_value& op2, const Vars& v
 		idx = imin;
 		if (imin == -1) {
 			cerr << "No available register" << endl;
-			return 0;
+			return nullptr;
 		}
 	}
 
 	if (generateMov)
-		ofile << "mov " << registers[idx]->name << "," << ((v)?v->toString():op2.toString()) << '\n';
+		functor.S() << "mov " << registers[idx]->name << "," << ((v)?v->toString():op2.toString()) << '\n';
 	return registers[idx];
 }
 
@@ -175,19 +169,19 @@ x86Register* Simplex86Generator::getRegistersForDiv(const jit_value& operand, co
 		}
 		registers[3]->freeRegister(functor); // Free edx
 		// FIXME : this is broken if the value is already in eax
-		ofile << "mov " << registers[0]->name << "," << getData(operand, vars) << '\n';
+		functor.S() << "mov " << registers[0]->name << "," << getData(operand, vars) << '\n';
 		return registers[0];
 	}
 	registers[0]->freeRegister(functor);
 	registers[3]->freeRegister(functor);
-	ofile << "mov " << registers[0]->name << "," << ((v)?v->toString():operand.toString()) << '\n';
+	functor.S() << "mov " << registers[0]->name << "," << ((v)?v->toString():operand.toString()) << '\n';
 	return registers[0];
 }
 
 std::string Simplex86Generator::getDataForDiv(const jit_value& operand, const Vars& vars) {
 	if (operand.scope == Constant) {
 		registers[1]->freeRegister(functor);
-		ofile << "mov " << registers[1]->name << "," << operand.toString() << '\n';
+		functor.S() << "mov " << registers[1]->name << "," << operand.toString() << '\n';
 		return registers[1]->name;
 	}
 	return getData(operand, vars);
@@ -215,7 +209,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 	operatorToInstruction['*'] = "imul ";
 	for (unsigned i = 0; i < bb->q.size(); i++) {
 		if (bb->q[i].label != -1)
-			ofile << "LA" << bb->q[i].label << ":\n";
+			functor.S() << "LA" << bb->q[i].label << ":\n";
 
 		int ope = bb->q[i].op;
 		jit_value op1 = bb->q[i].op1;
@@ -232,7 +226,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		case '=':
 			if (op1.scope == Constant) {
 				v = variables.get(res);
-				ofile << "mov dword " << v->toString() << "," << op1.toString()
+				functor.S() << "mov dword " << v->toString() << "," << op1.toString()
 						<< '\n';
 				v->setSingleLocation();
 			} else {
@@ -240,7 +234,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 				// find empty register
 				reg = getRegister(op1, variables);
 				v = variables.get(res);
-				ofile << "mov " << v->toString() << "," << reg->name << '\n';
+				functor.S() << "mov " << v->toString() << "," << reg->name << '\n';
 				v->setSingleLocation();
 				reg->setSingleReference(v);
 			}
@@ -254,7 +248,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			} else {
 				/* both are constants */
 			}
-			ofile << operatorToInstruction[ope] << reg->name << ","
+			functor.S() << operatorToInstruction[ope] << reg->name << ","
 					<< getData(op2, variables) << '\n';
 			v = variables.get(res);
 			v->setRegisterLocation(reg);
@@ -267,9 +261,9 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			} else {
 				/* both are constants */
 			}
-			ofile << "xor edx, edx" << '\n';
+			functor.S() << "xor edx, edx" << '\n';
 			tmpStr = getDataForDiv(op2, variables);
-			ofile << "idiv dword " << tmpStr << '\n';
+			functor.S() << "idiv dword " << tmpStr << '\n';
 			if (ope == '%')
 				reg = registers[3];
 
@@ -302,10 +296,10 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			v->setRegisterLocation(reg2);
 			reg2->setSingleReference(v);
 			if (int_value == -1)
-				ofile << "mov " << reg2->name << ",[" << reg->name << "+4*"
+				functor.S() << "mov " << reg2->name << ",[" << reg->name << "+4*"
 						<< reg1->name << "+12]" << endl;
 			else
-				ofile << "mov " << reg2->name << ",[" << reg->name << "+"
+				functor.S() << "mov " << reg2->name << ",[" << reg->name << "+"
 						<< int_value << "]" << endl;
 
 			break;
@@ -338,10 +332,10 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			}
 			tmpStr = getData(op1, variables);
 			if (int_value == -1)
-				ofile << "mov dword " << "[" << reg->name << "+4*" << reg1->name
+				functor.S() << "mov dword " << "[" << reg->name << "+4*" << reg1->name
 						<< "+12]," << tmpStr << endl;
 			else
-				ofile << "mov dword " << "[" << reg->name << "+" << int_value
+				functor.S() << "mov dword " << "[" << reg->name << "+" << int_value
 						<< "]," << tmpStr << endl;
 
 			//v = variables.get(op2);
@@ -361,16 +355,16 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			v = variables.get(res);
 			v->setRegisterLocation(reg2);
 			reg2->setSingleReference(v);
-			ofile << "mov " << reg2->name << ",[" << reg->name << "+8]\n";
+			functor.S() << "mov " << reg2->name << ",[" << reg->name << "+8]\n";
 			break;
 		case 1:
 			// goto
-			ofile << "jmp " << res.toString() << '\n';
+			functor.S() << "jmp " << res.toString() << '\n';
 			break;
 		case 2:
 			// iinc
 			v = variables.get(op1);
-			ofile << "add dword " << v->toString() << "," << op2.toString()
+			functor.S() << "add dword " << v->toString() << "," << op2.toString()
 					<< '\n';
 			break;
 		case 3:
@@ -382,30 +376,30 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			} else {
 				/* both are constants */
 			}
-			ofile << "cmp " << reg->name << ","
+			functor.S() << "cmp " << reg->name << ","
 					<< getData(op2, variables) << '\n';
 			tmpStr = "jge ";
 			if (ope == 4) tmpStr = "jle ";
 			if (ope == 5) tmpStr = "jg ";
 
-			ofile << tmpStr << res.toString() << '\n';
+			functor.S() << tmpStr << res.toString() << '\n';
 			break;
 		case 'r':
 			if (op1.scope == Constant) {
 				registers[0]->freeRegister(functor);
-				ofile << "mov " << registers[0]->name << "," << op1.toString()
+				functor.S() << "mov " << registers[0]->name << "," << op1.toString()
 						<< '\n';
 			} else {
 				// it is a variable
 				reg = getRegister(op1, variables);
 				if (reg->id != 0) {
 					registers[0]->freeRegister(functor);
-					ofile << "mov " << registers[0]->name << "," << reg->name << '\n';
+					functor.S() << "mov " << registers[0]->name << "," << reg->name << '\n';
 				}
 			}
-			ofile << "add esp, " << variables.variables.size() * 4 << '\n';
-			ofile << "pop ebp" << '\n';
-			ofile << "ret" << '\n';
+			functor.S() << "add esp, " << variables.variables.size() * 4 << '\n';
+			functor.S() << "pop ebp" << '\n';
+			functor.S() << "ret" << '\n';
 			break;
 		}
 		if (op1.scope == Temporal)
@@ -416,69 +410,6 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 	}
 	for (auto& r : registers)
 		r->freeRegister(functor);
-}
-
-void* Simplex86Generator::generate(Routine& routine) {
-	// definition of involved variables
-	Vars variables(routine.countOfParameters);
-	for (unsigned i = 0 ; i < routine.q.size(); i++) {
-		Quadr q = routine.q[i];
-		variables.addVariable(q.op1);
-		variables.addVariable(q.op2);
-		variables.addVariable(q.res);
-	}
-	// init memory buffer
-	void *buf = mmap(NULL, 4096, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	// open file
-	ofile.open("example.asm");
-	functor = ReleaseX86RegisterFunctor(ofile);
-	// let start generating
-	ofile << "BITS 32" << '\n';
-	ofile << "ORG " << (unsigned)buf << '\n';
-	ofile << "push ebp" << '\n';
-	ofile << "mov ebp,esp" << '\n';
-	ofile << "sub esp," << variables.variables.size()*4 << '\n';
-
-	// let remove the quad from the routine
-	routine.q.clear();
-
-	// generate in order from the Control-Flow Graph
-	// FIXME : I'm doing big assumptions here
-	// 1 - I'm considering that every basic block will have at most to children
-	// 2 - I'm considering that if the last instruction is conditional jump then
-	// 	   the second edge will be the jump and the first one will be the next
-	//	   instruction (when the condition is false). This assumption holds for
-	//	   my method to build the Control-Flow Graph but it is not general.
-	vector<vertex_t> vec;
-	int n = boost::num_vertices(routine.g);
-	bool* mark = new bool[n];
-	for (int i = 0 ; i < n ; ++i) mark[i] = false;
-	mark[0] = true;
-	vec.push_back(0);
-	while (!vec.empty()) {
-		boost::graph_traits<ControlFlowGraph>::out_edge_iterator ai,ai_end;
-		vertex_t v0 = vec.back();
-		cout << " Block " << v0 << endl;
-		vec.pop_back();
-		BasicBlock* bb = routine.g[v0];
-		generateBasicBlock(variables, bb);
-		for (tie(ai, ai_end) = boost::out_edges(v0, routine.g) ; ai != ai_end ; ++ai) {
-			if (!mark[(*ai).m_target]) {
-				vec.push_back((*ai).m_target);
-				mark[(*ai).m_target] = true;
-			}
-		}
-	}
-
-	ofile.close();
-
-	int status = system("nasm -f bin -o coco.bin example.asm");
-
-	int fd = open("coco.bin", O_RDONLY);
-	read(fd,buf,4096);
-	close(fd);
-
-	return buf;
 }
 
 } /* namespace jit */

@@ -67,7 +67,7 @@ namespace jvm {
 				MethodInfo* mi = cf->methods[index];
 
 				if ((mi->access_flags & ACC_STATIC)) {
-					exec->execute_int(cf, mi, fn);
+					exec->execute(cf, mi, fn);
 				} else
 					throw new exception();
 			}
