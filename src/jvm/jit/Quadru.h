@@ -27,28 +27,20 @@ struct jit_value {
 	union {
 		int constant; // used with constants or local variables
 	} value;
-	std::string toString() {
+	std::string toString() const {
 		if (scope == Constant) {
-			std::ostringstream oss;
-			oss << value.constant;
-			return oss.str();
+			return std::to_string(value.constant);
 		}
 		else if (scope == Useless)
 			return "_";
 		else if (scope == Temporal) {
-			std::ostringstream oss;
-			oss << "T" << value.constant;
-			return oss.str();
+			return "T" + std::to_string(value.constant);
 		}
 		else if (scope == Local) {
-			std::ostringstream oss;
-			oss << "L" << value.constant;
-			return oss.str();
+			return "L" + std::to_string(value.constant);
 		}
 		else if (scope == Label) {
-			std::ostringstream oss;
-			oss << "LA" << value.constant;
-			return oss.str();
+			return "LA" + std::to_string(value.constant);
 		}
 		return "Wrong";
 	}
@@ -84,6 +76,19 @@ struct Routine {
 
 	Routine(unsigned countOfParameters);
 
+	Routine(Routine&& r) {
+		g = r.g; r.g = {};
+		countOfParameters = r.countOfParameters;
+		q = r.q; r.q = {};
+		last_temp = r.last_temp;
+		freeTmp = r.freeTmp; r.freeTmp = {};
+	}
+
+	Routine() {
+		last_temp = 0;
+		countOfParameters = 0;
+	}
+
 	/**
 	 * Arithmetic operations
 	 */
@@ -104,6 +109,11 @@ struct Routine {
 	 * Assignments
 	 */
 	void jit_assign_local(jit_value local, jit_value v);
+
+	/**
+	 * Utils
+	 */
+	int getTempId();
 
 
 	void buildControlFlowGraph();

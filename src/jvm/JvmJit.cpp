@@ -33,7 +33,7 @@ void JvmJit::execute(ClassFile* cf, MethodInfo* method){
 
 }
 
-void JvmJit::toQuadruplus(ClassFile* cf, MethodInfo* method, jit::Routine& procedure) {
+jit::Routine JvmJit::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 	stack<jit_value> values;
 	vector< pair< int, int > > bytecode2qua;
 	set<int> labels;
@@ -43,6 +43,9 @@ void JvmJit::toQuadruplus(ClassFile* cf, MethodInfo* method, jit::Routine& proce
 	u4 branch1;
 	unsigned char branch2;
 	u4 i2;
+
+	int argumentsCount = cf->getParameterCount(method->descriptor_index);
+	jit::Routine procedure(argumentsCount);
 //	long long l;
 	int oper;
 	AttributeInfo* ai = method->attributes[0];
@@ -388,15 +391,14 @@ void JvmJit::toQuadruplus(ClassFile* cf, MethodInfo* method, jit::Routine& proce
 					break;
 			} // switch
 		} // while
-		for (set<int>::iterator it = labels.begin(), itEnd = labels.end() ; it != itEnd ; ++it ) {
-			vector< pair< int, int > >::iterator ja = std::lower_bound(bytecode2qua.begin(), bytecode2qua.end(), *it, myfunc);
+		for (auto& pa : labels){
+			vector< pair< int, int > >::iterator ja = std::lower_bound(bytecode2qua.begin(), bytecode2qua.end(), pa, myfunc);
 			pair<int,int> p = *ja;
 			procedure.q[p.second].label = p.first;
 		}
-		// build control-flow graph
-		procedure.buildControlFlowGraph();
-	}
 
+	}
+	return procedure;
 }
 
 void* JvmJit::compile(ClassFile* cf, MethodInfo* method){
@@ -407,9 +409,9 @@ void* JvmJit::compile(ClassFile* cf, MethodInfo* method){
 	else {
 		cout << "Compiling : " << cf->getClassName() << ":" << cf->getUTF(method->name_index) << '\n';
 		// first generate IR with quadruplos
-		int count = cf->getParameterCount(method->descriptor_index);
-		Routine procedure(count);
-		toQuadruplus(cf, method, procedure);
+		Routine procedure = toQuadruplus(cf, method);
+		// build control-flow graph
+		procedure.buildControlFlowGraph();
 		procedure.print();
 		Simplex86Generator generator;
 		addr = generator.generate(procedure);
@@ -419,13 +421,13 @@ void* JvmJit::compile(ClassFile* cf, MethodInfo* method){
 }
 
 jit_value JvmJit::getConstant(ClassFile* cf, u2 index, CodeAttribute* caller) {
-			Constant_Info* ri = dynamic_cast<Constant_Info*>(cf->info[index - 1]);
-			CONSTANT_Integer_info* ii = dynamic_cast<CONSTANT_Integer_info*>(ri);
-			if (ii)
-				return jit_constant(ii->value);
-			else {
-				CONSTANT_String_Info* si = dynamic_cast<CONSTANT_String_Info*>(ri);
-				if (si) {
+	Constant_Info* ri = dynamic_cast<Constant_Info*>(cf->info[index - 1]);
+	CONSTANT_Integer_info* ii = dynamic_cast<CONSTANT_Integer_info*>(ri);
+	if (ii)
+		return jit_constant(ii->value);
+	else {
+		CONSTANT_String_Info* si = dynamic_cast<CONSTANT_String_Info*>(ri);
+		if (si) {
 //					string utf = cf->getUTF(si->index);
 //					cout << utf << endl;
 //					ArrayType* t = new ArrayType("",classes["char"]);
@@ -449,13 +451,13 @@ jit_value JvmJit::getConstant(ClassFile* cf, u2 index, CodeAttribute* caller) {
 //					execute(cf2, mi);
 //					exitFrame(caller->max_locals, code->max_locals);
 //					Space::instance()->removeRoot(&obj);
-					return jit::useless_value;
-				}
-				else {
-					return jit::useless_value;
-//					push(0.0f);
-				}
-			}
+			return jit::useless_value;
 		}
+		else {
+			return jit::useless_value;
+//					push(0.0f);
+		}
+	}
+}
 
 } /* namespace jit */

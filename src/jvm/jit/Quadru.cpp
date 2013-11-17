@@ -79,14 +79,7 @@ jit_value Routine::jit_binary_operation(unsigned char op, jit_value op1, jit_val
 		r.res.type = op1.type;
 		r.res.scope = Temporal;
 		r.label = -1;
-		if (freeTmp.empty())
-			r.res.value.constant = last_temp++;
-		else {
-			std::set<int>::iterator it = freeTmp.begin();
-			int id = *it;
-			freeTmp.erase(id);
-			r.res.value.constant = id;
-		}
+		r.res.value.constant = getTempId();
 		q.push_back(r);
 		if (op1.scope == Temporal)
 			freeTmp.insert(op1.value.constant);
@@ -108,14 +101,7 @@ jit_value Routine::jit_regular_operation(unsigned char op, jit_value op1, jit_va
 	r.res.type = result_type;
 	r.res.scope = Temporal;
 	r.label = -1;
-	if (freeTmp.empty())
-		r.res.value.constant = last_temp++;
-	else {
-		std::set<int>::iterator it = freeTmp.begin();
-		int id = *it;
-		freeTmp.erase(id);
-		r.res.value.constant = id;
-	}
+	r.res.value.constant = getTempId();
 	q.push_back(r);
 	if (op1.scope == Temporal)
 		freeTmp.insert(op1.value.constant);
@@ -219,6 +205,20 @@ void Routine::buildControlFlowGraph() {
 		}
 		BasicBlock* block = g[lastV];
 		block->q.push_back(*it);
+	}
+}
+
+/**
+ * Utils
+ */
+int Routine::getTempId() {
+	if (freeTmp.empty())
+		return last_temp++;
+	else {
+		std::set<int>::iterator it = freeTmp.begin();
+		int id = *it;
+		freeTmp.erase(id);
+		return id;
 	}
 }
 

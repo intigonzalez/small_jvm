@@ -27,13 +27,7 @@
 
 using namespace std;
 
-#define FOR_EACH(V,TYPE, SET) for(set<V>::iterator it=SET.begin(),itEnd=SET.end();it!= itEnd;it++){TYPE V=*it
-
-#define END_FOR_EACH }
-
 namespace jit {
-
-ofstream ofile;
 
 std::string Variable::toString() {
 	std::ostringstream oss;
@@ -46,8 +40,8 @@ std::string Variable::toString() {
 }
 
 void Variable::setSingleLocation() {
-	for (set<x86Register*>::iterator i = valueInR.begin() ; i != valueInR.end() ; i++)
-		(*i)->deattachSimple(this);
+	for (auto& r : valueInR)
+		r->deattachSimple(this);
 	valueInR.clear();
 	// FIXME : Iterate over variables
 	valueIn.clear();
@@ -56,8 +50,8 @@ void Variable::setSingleLocation() {
 }
 
 void Variable::setRegisterLocation(x86Register* r) {
-	for (set<x86Register*>::iterator i = valueInR.begin() ; i != valueInR.end() ; i++)
-		(*i)->deattachSimple(this);
+	for (auto& r : valueInR)
+		r->deattachSimple(this);
 	valueInR.clear();
 	valueInR.insert(r);
 	// FIXME : Iterate over variables
@@ -66,8 +60,8 @@ void Variable::setRegisterLocation(x86Register* r) {
 }
 
 void Variable::markAsForgetten() {
-	for (set<x86Register*>::iterator i = valueInR.begin() ; i != valueInR.end() ; i++)
-		(*i)->deattachSimple(this);
+	for (auto& r : valueInR)
+		r->deattachSimple(this);
 	valueInR.clear();
 	// FIXME : Iterate over variables
 	valueIn.clear();
@@ -83,10 +77,10 @@ void Variable::attach(x86Register* r) {
 	r->attachSimple(this);
 }
 
-Variable* Vars::get(jit_value& value) {
+Variable* Vars::get(const jit_value& value) const {
 	Variable v(value.scope, value.value.constant);
 	set<Variable*>::iterator itV = variables.find(&v);
-	if (itV == variables.end()) return 0;
+	if (itV == variables.end()) return nullptr;
 	Variable* vv = *itV;
 	if (value.scope == Temporal) {
 		int index = vv->n + localCount - countOfParameters ;
@@ -105,13 +99,14 @@ Variable* Vars::get(jit_value& value) {
 	return vv;
 }
 
-void x86Register::freeRegister() {
+template <class Function>
+void x86Register::freeRegister(Function fn) {
 	// save the register in every variable it knows
-	for (set< Variable* >::iterator it = valueOf.begin(), itEnd = valueOf.end(); it != itEnd ; it++) {
-		Variable* v = *it;
+	for (auto& v : valueOf) {
 		if (!v->inVar(v) && v->inRegister(this)) {
 			v->deattachSimple(this);
-			ofile << "mov " << v->toString() << "," << name << '\n';
+			fn(v->toString(), name);
+//			ofile << "mov " << v->toString() << "," << name << '\n';
 			v->attach(v);
 		}
 	}
@@ -119,15 +114,13 @@ void x86Register::freeRegister() {
 }
 
 void x86Register::setSingleReference(Variable* v) {
-	for (set< Variable* >::iterator it = valueOf.begin(), itEnd = valueOf.end(); it != itEnd ; it++) {
-		Variable* v = *it;
+	for (auto& v : valueOf)
 		v->deattachSimple(this);
-	}
 	valueOf.clear();
 	attach(v);
 }
 
-x86Register* getRegister(jit_value& op2, Vars& vars, vector<x86Register*>& registers, ulong fixed, bool generateMov) {
+x86Register* Simplex86Generator::getRegister(const jit_value& op2, const Vars& vars, ulong fixed, bool generateMov) {
 	Variable* v = vars.get(op2);
 	if (v && v->inRegister())  {
 		// the value is in a register
@@ -146,7 +139,7 @@ x86Register* getRegister(jit_value& op2, Vars& vars, vector<x86Register*>& regis
 	}
 	if (idx == registers.size()) {
 		// restore variables in imin
-		registers[imin]->freeRegister();
+		registers[imin]->freeRegister(functor);
 		idx = imin;
 		if (imin == -1) {
 			cerr << "No available register" << endl;
@@ -159,54 +152,63 @@ x86Register* getRegister(jit_value& op2, Vars& vars, vector<x86Register*>& regis
 	return registers[idx];
 }
 
-x86Register* getRegister(jit_value& operand, Vars& vars, vector<x86Register*>& registers) {
-	return getRegister(operand, vars, registers, 0, true);
+x86Register* Simplex86Generator::getRegister(const jit_value& operand, const Vars& vars) {
+	return getRegister(operand, vars, 0, true);
 }
 
-std::string getData(jit_value& op2, Vars& vars, vector<x86Register*>& registers) {
+std::string Simplex86Generator::getData(const jit_value& op2, const Vars& vars) {
 	if (op2.scope == Temporal || op2.scope == Local || op2.scope == Field) {
 		Variable* v = vars.get(op2);
-		if (v->inRegister()) {
+		if (v->inRegister())
 			return v->getRegisterWithValue()->name;
-		}
 		return v->toString();
 	}
 	return op2.toString();
 }
 
-x86Register* getRegistersForDiv(jit_value& operand, Vars& vars, vector<x86Register*>& registers) {
+x86Register* Simplex86Generator::getRegistersForDiv(const jit_value& operand, const Vars& vars) {
 	Variable* v = vars.get(operand);
 	if (v && v->inRegister())  {
 		// the value is in a register
 		if (!v->inRegister(registers[0])) {
-			registers[0]->freeRegister();
+			registers[0]->freeRegister(functor);
 		}
-		registers[3]->freeRegister(); // Free edx
+		registers[3]->freeRegister(functor); // Free edx
 		// FIXME : this is broken if the value is already in eax
-		ofile << "mov " << registers[0]->name << "," << getData(operand, vars, registers) << '\n';
+		ofile << "mov " << registers[0]->name << "," << getData(operand, vars) << '\n';
 		return registers[0];
 	}
-	registers[0]->freeRegister();
-	registers[3]->freeRegister();
+	registers[0]->freeRegister(functor);
+	registers[3]->freeRegister(functor);
 	ofile << "mov " << registers[0]->name << "," << ((v)?v->toString():operand.toString()) << '\n';
 	return registers[0];
 }
 
-std::string getDataForDiv(jit_value& operand, Vars& vars, vector<x86Register*>& registers) {
+std::string Simplex86Generator::getDataForDiv(const jit_value& operand, const Vars& vars) {
 	if (operand.scope == Constant) {
-		registers[1]->freeRegister();
+		registers[1]->freeRegister(functor);
 		ofile << "mov " << registers[1]->name << "," << operand.toString() << '\n';
 		return registers[1]->name;
 	}
-	return getData(operand, vars, registers);
+	return getData(operand, vars);
 }
 
-Simplex86Generator::Simplex86Generator() {}
+Simplex86Generator::Simplex86Generator() {
+	registers.push_back(new x86Register("eax",0));
+	registers.push_back(new x86Register("ebx",1));
+	registers.push_back(new x86Register("ecx",2));
+	registers.push_back(new x86Register("edx",3));
+	registers.push_back(new x86Register("esi",4));
+	registers.push_back(new x86Register("edi",5));
+}
 
-Simplex86Generator::~Simplex86Generator() {}
+Simplex86Generator::~Simplex86Generator() {
+	for (auto& r : registers)
+		delete r;
+}
 
-void Simplex86Generator::generateBasicBlock(Vars variables,
-		std::vector<x86Register*> registers, BasicBlock* bb) {
+void Simplex86Generator::generateBasicBlock(const Vars& variables,
+	BasicBlock* bb) {
 	map<int, string> operatorToInstruction;
 	operatorToInstruction['+'] = "add ";
 	operatorToInstruction['-'] = "sub ";
@@ -236,7 +238,7 @@ void Simplex86Generator::generateBasicBlock(Vars variables,
 			} else {
 				// variable
 				// find empty register
-				reg = getRegister(op1, variables, registers);
+				reg = getRegister(op1, variables);
 				v = variables.get(res);
 				ofile << "mov " << v->toString() << "," << reg->name << '\n';
 				v->setSingleLocation();
@@ -248,12 +250,12 @@ void Simplex86Generator::generateBasicBlock(Vars variables,
 		case '-':
 			if (op1.scope != Constant || op2.scope != Constant) {
 				// find register for op1 and copy it if necessary
-				reg = getRegister(op1, variables, registers);
+				reg = getRegister(op1, variables);
 			} else {
 				/* both are constants */
 			}
 			ofile << operatorToInstruction[ope] << reg->name << ","
-					<< getData(op2, variables, registers) << '\n';
+					<< getData(op2, variables) << '\n';
 			v = variables.get(res);
 			v->setRegisterLocation(reg);
 			reg->setSingleReference(v);
@@ -261,12 +263,12 @@ void Simplex86Generator::generateBasicBlock(Vars variables,
 		case '/':
 		case '%':
 			if (op1.scope != Constant || op2.scope != Constant) {
-				reg = getRegistersForDiv(op1, variables, registers);
+				reg = getRegistersForDiv(op1, variables);
 			} else {
 				/* both are constants */
 			}
 			ofile << "xor edx, edx" << '\n';
-			tmpStr = getDataForDiv(op2, variables, registers);
+			tmpStr = getDataForDiv(op2, variables);
 			ofile << "idiv dword " << tmpStr << '\n';
 			if (ope == '%')
 				reg = registers[3];
@@ -279,15 +281,14 @@ void Simplex86Generator::generateBasicBlock(Vars variables,
 			used.reset();
 			// get register for array base
 			v = variables.get(op1);
-			reg = getRegister(op1, variables, registers);
+			reg = getRegister(op1, variables);
 			used.set(reg->id);
 			v->setRegisterLocation(reg);
 			reg->setSingleReference(v);
 			// get a different register for index
 			v = variables.get(op2);
 			if (v) {
-				reg1 = getRegister(op2, variables, registers, used.to_ulong(),
-						true);
+				reg1 = getRegister(op2, variables, used.to_ulong(),true);
 				used.set(reg1->id);
 				v->setRegisterLocation(reg1);
 				reg1->setSingleReference(v);
@@ -296,8 +297,7 @@ void Simplex86Generator::generateBasicBlock(Vars variables,
 				int_value = (op2.value.constant << 2) + 12; // FIXME : size of the array element
 			}
 			// get a different register to store the values
-			reg2 = getRegister(res, variables, registers, used.to_ulong(),
-					false);
+			reg2 = getRegister(res, variables, used.to_ulong(),false);
 			v = variables.get(res);
 			v->setRegisterLocation(reg2);
 			reg2->setSingleReference(v);
@@ -314,15 +314,14 @@ void Simplex86Generator::generateBasicBlock(Vars variables,
 			used.reset();
 			// get register for array base
 			v = variables.get(res);
-			reg = getRegister(res, variables, registers);
+			reg = getRegister(res, variables);
 			used.set(reg->id);
 			v->setRegisterLocation(reg);
 			reg->setSingleReference(v);
 			// get a different register for index
 			v = variables.get(op2);
 			if (v) {
-				reg1 = getRegister(op2, variables, registers, used.to_ulong(),
-						true);
+				reg1 = getRegister(op2, variables, used.to_ulong(),true);
 				used.set(reg1->id);
 				v->setRegisterLocation(reg1);
 				reg1->setSingleReference(v);
@@ -333,12 +332,11 @@ void Simplex86Generator::generateBasicBlock(Vars variables,
 			// get a different register to store the values
 			v = variables.get(op1);
 			if (v) {
-				reg2 = getRegister(op1, variables, registers, used.to_ulong(),
-						true);
+				reg2 = getRegister(op1, variables, used.to_ulong(),true);
 				v->setRegisterLocation(reg2);
 				reg2->setSingleReference(v);
 			}
-			tmpStr = getData(op1, variables, registers);
+			tmpStr = getData(op1, variables);
 			if (int_value == -1)
 				ofile << "mov dword " << "[" << reg->name << "+4*" << reg1->name
 						<< "+12]," << tmpStr << endl;
@@ -354,13 +352,12 @@ void Simplex86Generator::generateBasicBlock(Vars variables,
 			used.reset();
 			// find empty register
 			v = variables.get(op1);
-			reg = getRegister(op1, variables, registers);
+			reg = getRegister(op1, variables);
 			used.set(reg->id);
 			v->setSingleLocation();
 			reg->setSingleReference(v);
 			// get a different register to store the values
-			reg2 = getRegister(res, variables, registers, used.to_ulong(),
-					false);
+			reg2 = getRegister(res, variables, used.to_ulong(),false);
 			v = variables.get(res);
 			v->setRegisterLocation(reg2);
 			reg2->setSingleReference(v);
@@ -381,12 +378,12 @@ void Simplex86Generator::generateBasicBlock(Vars variables,
 		case 5:
 			if (op1.scope != Constant || op2.scope != Constant) {
 				// find register for op1 and copy it if necessary
-				reg = getRegister(op1, variables, registers);
+				reg = getRegister(op1, variables);
 			} else {
 				/* both are constants */
 			}
 			ofile << "cmp " << reg->name << ","
-					<< getData(op2, variables, registers) << '\n';
+					<< getData(op2, variables) << '\n';
 			tmpStr = "jge ";
 			if (ope == 4) tmpStr = "jle ";
 			if (ope == 5) tmpStr = "jg ";
@@ -395,14 +392,14 @@ void Simplex86Generator::generateBasicBlock(Vars variables,
 			break;
 		case 'r':
 			if (op1.scope == Constant) {
-				registers[0]->freeRegister();
+				registers[0]->freeRegister(functor);
 				ofile << "mov " << registers[0]->name << "," << op1.toString()
 						<< '\n';
 			} else {
 				// it is a variable
-				reg = getRegister(op1, variables, registers);
+				reg = getRegister(op1, variables);
 				if (reg->id != 0) {
-					registers[0]->freeRegister();
+					registers[0]->freeRegister(functor);
 					ofile << "mov " << registers[0]->name << "," << reg->name << '\n';
 				}
 			}
@@ -417,21 +414,11 @@ void Simplex86Generator::generateBasicBlock(Vars variables,
 		if (op2.scope == Temporal)
 			variables.get(op2)->markAsForgetten();
 	}
-	for (std::vector<x86Register*>::iterator it = registers.begin(), it_end = registers.end() ; it != it_end ; ++it) {
-		(*it)->freeRegister();
-	}
+	for (auto& r : registers)
+		r->freeRegister(functor);
 }
 
 void* Simplex86Generator::generate(Routine& routine) {
-
-	// definition of registers
-	std::vector<x86Register*> registers;
-	registers.push_back(new x86Register("eax",0));
-	registers.push_back(new x86Register("ebx",1));
-	registers.push_back(new x86Register("ecx",2));
-	registers.push_back(new x86Register("edx",3));
-	registers.push_back(new x86Register("esi",4));
-	registers.push_back(new x86Register("edi",5));
 	// definition of involved variables
 	Vars variables(routine.countOfParameters);
 	for (unsigned i = 0 ; i < routine.q.size(); i++) {
@@ -444,6 +431,7 @@ void* Simplex86Generator::generate(Routine& routine) {
 	void *buf = mmap(NULL, 4096, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	// open file
 	ofile.open("example.asm");
+	functor = ReleaseX86RegisterFunctor(ofile);
 	// let start generating
 	ofile << "BITS 32" << '\n';
 	ofile << "ORG " << (unsigned)buf << '\n';
@@ -473,7 +461,7 @@ void* Simplex86Generator::generate(Routine& routine) {
 		cout << " Block " << v0 << endl;
 		vec.pop_back();
 		BasicBlock* bb = routine.g[v0];
-		generateBasicBlock(variables, registers, bb);
+		generateBasicBlock(variables, bb);
 		for (tie(ai, ai_end) = boost::out_edges(v0, routine.g) ; ai != ai_end ; ++ai) {
 			if (!mark[(*ai).m_target]) {
 				vec.push_back((*ai).m_target);
@@ -489,10 +477,6 @@ void* Simplex86Generator::generate(Routine& routine) {
 	int fd = open("coco.bin", O_RDONLY);
 	read(fd,buf,4096);
 	close(fd);
-
-	for (std::vector<x86Register*>::iterator it = registers.begin(), it_end = registers.end() ; it != it_end ; ++it) {
-		delete (*it);
-	}
 
 	return buf;
 }

@@ -25,7 +25,7 @@ private:
 	map< pair<string,string> , void* > compiledMethods;
 
 	void* compile(ClassFile* cf, MethodInfo* method);
-	void toQuadruplus(ClassFile* cf, MethodInfo* method, jit::Routine& q);
+	jit::Routine toQuadruplus(ClassFile* cf, MethodInfo* method);
 
 	jit::jit_value getConstant(ClassFile* cf, u2 index, CodeAttribute* caller);
 public:

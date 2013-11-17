@@ -12,6 +12,7 @@
 
 #include <string>
 #include <set>
+#include <fstream>
 
 namespace jit {
 
@@ -115,7 +116,19 @@ public:
 		}
 	}
 
-	Variable* get(jit_value& value) ;
+	Variable* get(const jit_value& value) const ;
+};
+
+class ReleaseX86RegisterFunctor {
+private:
+	std::ostream* ofile;
+
+public:
+	ReleaseX86RegisterFunctor(std::ostream& s) :ofile(&s) {}
+	ReleaseX86RegisterFunctor() :ofile(nullptr) {}
+	void operator()(std::string var, std::string reg) {
+		(*ofile) << "mov " << var << "," << reg << '\n';
+	}
 };
 
 class x86Register : public Identifiable {
@@ -123,7 +136,7 @@ private:
 	std::set< Variable* , my_compare> valueOf; // set of variables whose values are in this register.
 public:
 	value_type type;
-	const char* name;
+	std::string name;
 
 	x86Register(const char* name, int number) {
 		this->name = name;
@@ -131,7 +144,8 @@ public:
 		type = Integer;
 	}
 
-	void freeRegister();
+	template <class Function>
+	void freeRegister(Function f);
 
 	bool holdingValue() {
 		return !this->valueOf.empty();
@@ -163,6 +177,7 @@ public:
 };
 
 class Simplex86Generator {
+
 public:
 	Simplex86Generator();
 	virtual ~Simplex86Generator();
@@ -170,7 +185,17 @@ public:
 	void* generate(Routine& routine);
 
 private:
-	void generateBasicBlock(Vars variables, std::vector<x86Register*> registers, BasicBlock* bb);
+	std::vector<x86Register*> registers;
+	std::ofstream ofile;
+	ReleaseX86RegisterFunctor functor;
+
+	void generateBasicBlock(const Vars& variables, BasicBlock* bb);
+
+	x86Register* getRegister(const jit_value& op2, const Vars& vars, ulong fixed, bool generateMov);
+	x86Register* getRegister(const jit_value& operand, const Vars& vars);
+	std::string getData(const jit_value& op2, const Vars& vars);
+	x86Register* getRegistersForDiv(const jit_value& operand, const Vars& vars);
+	std::string getDataForDiv(const jit_value& operand, const Vars& vars);
 };
 
 } /* namespace jit */
