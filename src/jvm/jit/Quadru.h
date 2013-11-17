@@ -8,6 +8,8 @@
 #ifndef QUADRU_H_
 #define QUADRU_H_
 
+#include "op_quadruplus.h"
+
 #include <vector>
 #include <string>
 #include <sstream>
@@ -49,7 +51,7 @@ struct jit_value {
 extern jit_value  useless_value;
 
 struct Quadr {
-	unsigned char op;
+	OP_QUAD op;
 	jit_value op1;
 	jit_value op2;
 	jit_value res;
@@ -92,13 +94,13 @@ struct Routine {
 	/**
 	 * Arithmetic operations
 	 */
-	jit_value jit_binary_operation(unsigned char op, jit_value op1, jit_value op2);
+	jit_value jit_binary_operation(OP_QUAD op, jit_value op1, jit_value op2);
 
 	/**
 	 * Used to emit regular quadruplos
 	 */
-	jit_value jit_regular_operation(unsigned char op, jit_value op1, jit_value op2, value_type result_type);
-	void jit_regular_operation(unsigned char op, jit_value op1, jit_value op2, jit_value resultRef);
+	jit_value jit_regular_operation(OP_QUAD op, jit_value op1, jit_value op2, value_type result_type);
+	void jit_regular_operation(OP_QUAD op, jit_value op1, jit_value op2, jit_value resultRef);
 
 	/**
 	 * Methods

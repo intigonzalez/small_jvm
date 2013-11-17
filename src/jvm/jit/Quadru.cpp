@@ -70,7 +70,7 @@ Routine::Routine(unsigned countOfParameters) {
 /**
  * Arithmetic operations
  */
-jit_value Routine::jit_binary_operation(unsigned char op, jit_value op1, jit_value op2) {
+jit_value Routine::jit_binary_operation(OP_QUAD op, jit_value op1, jit_value op2) {
 	Quadr r;
 	if (op1.type == op2.type) {
 		r.op1 = op1;
@@ -93,7 +93,7 @@ jit_value Routine::jit_binary_operation(unsigned char op, jit_value op1, jit_val
 /**
  * Used to emit regular quadruplos
  */
-jit_value Routine::jit_regular_operation(unsigned char op, jit_value op1, jit_value op2, value_type result_type) {
+jit_value Routine::jit_regular_operation(OP_QUAD op, jit_value op1, jit_value op2, value_type result_type) {
 	Quadr r;
 	r.op1 = op1;
 	r.op2 = op2;
@@ -113,7 +113,7 @@ jit_value Routine::jit_regular_operation(unsigned char op, jit_value op1, jit_va
 /**
  * Used to emit regular quadruplos
  */
-void Routine::jit_regular_operation(unsigned char op, jit_value op1, jit_value op2, jit_value resultRef) {
+void Routine::jit_regular_operation(OP_QUAD op, jit_value op1, jit_value op2, jit_value resultRef) {
 	Quadr r;
 	r.op1 = op1;
 	r.op2 = op2;
@@ -132,7 +132,7 @@ void Routine::jit_regular_operation(unsigned char op, jit_value op1, jit_value o
  */
 void Routine::jit_return_int(jit_value r) {
 	Quadr result = {
-		'r',
+		OP_RETURN,
 		r,
 		useless_value,
 		useless_value,
@@ -146,7 +146,7 @@ void Routine::jit_return_int(jit_value r) {
  */
 void Routine::jit_assign_local(jit_value local,jit_value v) {
 	Quadr result = {
-		'=',
+		ASSIGN,
 		v,
 		useless_value,
 		local,

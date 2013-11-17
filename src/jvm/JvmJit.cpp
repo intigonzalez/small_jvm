@@ -43,7 +43,7 @@ jit::Routine JvmJit::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 	int argumentsCount = cf->getParameterCount(method->descriptor_index);
 	jit::Routine procedure(argumentsCount);
 //	long long l;
-	int oper;
+	OP_QUAD oper;
 	AttributeInfo* ai = method->attributes[0];
 	string method_name = cf->getUTF(method->name_index);
 	CodeAttribute* code = dynamic_cast<CodeAttribute*>(ai);
@@ -124,8 +124,7 @@ jit::Routine JvmJit::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					v = values.top(); values.pop(); // r-value
 					v2 = values.top(); values.pop(); // index
 					v1 = values.top(); values.pop(); // array
-					oper = ']';
-					procedure.jit_regular_operation(oper, v,v2, v1);
+					procedure.jit_regular_operation(SET_ARRAY_POS, v,v2, v1);
 					index++;
 //					v = top(); pop(); // value
 //					i2 = popI(); // index
@@ -170,9 +169,9 @@ jit::Routine JvmJit::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					branch2 = (unsigned char)code->code[index + 2];
 					branch1 = index + ((branch1 << 8) | branch2);
 					labels.insert(branch1);
-					oper = 3;
-					if (opcode == if_icmple) oper = 4;
-					else if (opcode == if_icmpgt) oper = 5;
+					oper = JGE;
+					if (opcode == if_icmple) oper = JLE;
+					else if (opcode == if_icmpgt) oper = JG;
 					procedure.jit_regular_operation(oper, v1,v2, jit_label(branch1));
 					index += 3;
 					break;
@@ -234,8 +233,7 @@ jit::Routine JvmJit::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				case iaload:
 					v2 = values.top(); values.pop();
 					v1 = values.top(); values.pop();
-					oper = '[';
-					values.push(procedure.jit_regular_operation(oper, v1,v2, Integer));
+					values.push(procedure.jit_regular_operation(GET_ARRAY_POS, v1,v2, Integer));
 					index++;
 					break;
 				case iadd:
@@ -245,11 +243,11 @@ jit::Routine JvmJit::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				case irem:
 					v2 = values.top(); values.pop();
 					v1 = values.top(); values.pop();
-					oper = '+';
-					if (opcode == isub) oper = '-';
-					else if (opcode == imul) oper = '*';
-					else if (opcode == idiv) oper = '/';
-					else if (opcode == irem) oper = '%';
+					oper = PLUS;
+					if (opcode == isub) oper = SUB;
+					else if (opcode == imul) oper = MUL;
+					else if (opcode == idiv) oper = DIV;
+					else if (opcode == irem) oper = REM;
 					values.push(procedure.jit_binary_operation(oper, v1,v2));
 //					b = popI();
 //					a = popI();
@@ -262,14 +260,14 @@ jit::Routine JvmJit::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					b = (unsigned char) code->code[index + 1];
 					v1 = jit_local_field(b, Integer);
 //					setLocal((unsigned char) code->code[index + 1], b + a);
-					procedure.jit_regular_operation(2, v1,v2, jit::useless_value);
+					procedure.jit_regular_operation(IINC, v1,v2, jit::useless_value);
 					index += 3;
 					break;
 				case op_goto:
 					branch1 = (char) code->code[index + 1];
 					branch2 = (unsigned char)code->code[index + 2];
 					branch1 = index + ((branch1 << 8) | branch2);
-					procedure.jit_regular_operation(1, jit::useless_value,jit::useless_value, jit_label(branch1));
+					procedure.jit_regular_operation(GOTO, jit::useless_value,jit::useless_value, jit_label(branch1));
 					labels.insert(branch1);
 					index+=3;
 					break;
@@ -320,7 +318,7 @@ jit::Routine JvmJit::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				case arraylength:
 					v = values.top(); values.pop();
 //					i2 = ObjectHandler::instance()->getArrayLength(popRef());
-					values.push(procedure.jit_regular_operation('L', v, jit::useless_value, Integer));
+					values.push(procedure.jit_regular_operation(ARRAY_LEN, v, jit::useless_value, Integer));
 //					push(i2);
 					index++;
 					break;

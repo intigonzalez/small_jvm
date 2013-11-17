@@ -58,7 +58,7 @@ namespace jvm {
 			static void execute(ClassFile* cf, const char* method, const char* description, JvmExecuter* exec);
 
 			template <class Executer, class Function>
-			static void execute_return_int(ClassFile* cf, const char* method, const char* description,
+			static void execute(ClassFile* cf, const char* method, const char* description,
 					Executer exec, Function fn) {
 				u2 index = cf->getCompatibleMethodIndex(method, description);
 				if (index < 0 || index >= cf->methods.size())

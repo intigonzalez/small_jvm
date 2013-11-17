@@ -65,9 +65,9 @@ int main(int argc, char* argv[])
 			(new JvmJit(ClassLoader::Instance(), Space::instance())):
 			((JvmExecuter*)new JvmInterpreter(ClassLoader::Instance(), Space::instance()));
 
-	for (int i = 0 ; i < 2 ; i++) {
+	for (int i = 0 ; i < 1 ; i++) {
 		int result;
-		JvmExecuter::execute_return_int(cf,"accessingArray","(I[I)I",(JvmJit*)exec, [&result] (JvmExecuter* exec, void * addr) {
+		JvmExecuter::execute(cf,"accessingArray","(I[I)I",(JvmJit*)exec, [&result] (JvmExecuter* exec, void * addr) {
 			Objeto array = exec->createNewRawArray(10, 10);
 			int value1 = 1;
 			int value2 = 2;

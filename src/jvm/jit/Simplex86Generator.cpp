@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <string>
 #include <bitset>
-#include <sstream>
 #include <fstream>
 #include <cstdio>
 
@@ -24,11 +23,8 @@ using namespace std;
 namespace jit {
 
 std::string Variable::toString() {
-	std::ostringstream oss;
-	if (scope == Local || scope == Temporal) {
-		oss << "[ebp-" << offsetInStack << "]";
-		return oss.str();
-	}
+	if (scope == Local || scope == Temporal)
+		return "[ebp-" + std::to_string(offsetInStack) + "]";
 	jit_value value = { type, scope, { n }};
 	return value.toString();
 }
@@ -204,9 +200,9 @@ Simplex86Generator::~Simplex86Generator() {
 void Simplex86Generator::generateBasicBlock(const Vars& variables,
 	BasicBlock* bb) {
 	map<int, string> operatorToInstruction;
-	operatorToInstruction['+'] = "add ";
-	operatorToInstruction['-'] = "sub ";
-	operatorToInstruction['*'] = "imul ";
+	operatorToInstruction[PLUS] = "add ";
+	operatorToInstruction[SUB] = "sub ";
+	operatorToInstruction[MUL] = "imul ";
 	for (unsigned i = 0; i < bb->q.size(); i++) {
 		if (bb->q[i].label != -1)
 			functor.S() << "LA" << bb->q[i].label << ":\n";
@@ -223,7 +219,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		std::bitset<6> used;
 		int int_value;
 		switch (ope) {
-		case '=':
+		case ASSIGN:
 			if (op1.scope == Constant) {
 				v = variables.get(res);
 				functor.S() << "mov dword " << v->toString() << "," << op1.toString()
@@ -239,9 +235,9 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 				reg->setSingleReference(v);
 			}
 			break;
-		case '+':
-		case '*':
-		case '-':
+		case PLUS:
+		case MUL:
+		case SUB:
 			if (op1.scope != Constant || op2.scope != Constant) {
 				// find register for op1 and copy it if necessary
 				reg = getRegister(op1, variables);
@@ -254,8 +250,8 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			v->setRegisterLocation(reg);
 			reg->setSingleReference(v);
 			break;
-		case '/':
-		case '%':
+		case DIV:
+		case REM:
 			if (op1.scope != Constant || op2.scope != Constant) {
 				reg = getRegistersForDiv(op1, variables);
 			} else {
@@ -271,7 +267,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			v->setRegisterLocation(reg);
 			reg->setSingleReference(v);
 			break;
-		case '[':
+		case GET_ARRAY_POS:
 			used.reset();
 			// get register for array base
 			v = variables.get(op1);
@@ -303,7 +299,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 						<< int_value << "]" << endl;
 
 			break;
-		case ']':
+		case SET_ARRAY_POS:
 			// read from array and store in var
 			used.reset();
 			// get register for array base
@@ -341,7 +337,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			//v = variables.get(op2);
 			//ofile << "mov " << v->toString() << "," << reg2->name << endl;
 			break;
-		case 'L':
+		case ARRAY_LEN:
 			// length of array
 			used.reset();
 			// find empty register
@@ -357,19 +353,19 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			reg2->setSingleReference(v);
 			functor.S() << "mov " << reg2->name << ",[" << reg->name << "+8]\n";
 			break;
-		case 1:
+		case GOTO:
 			// goto
 			functor.S() << "jmp " << res.toString() << '\n';
 			break;
-		case 2:
+		case IINC:
 			// iinc
 			v = variables.get(op1);
 			functor.S() << "add dword " << v->toString() << "," << op2.toString()
 					<< '\n';
 			break;
-		case 3:
-		case 4:
-		case 5:
+		case JGE:
+		case JLE:
+		case JG:
 			if (op1.scope != Constant || op2.scope != Constant) {
 				// find register for op1 and copy it if necessary
 				reg = getRegister(op1, variables);
@@ -384,7 +380,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 
 			functor.S() << tmpStr << res.toString() << '\n';
 			break;
-		case 'r':
+		case OP_RETURN:
 			if (op1.scope == Constant) {
 				registers[0]->freeRegister(functor);
 				functor.S() << "mov " << registers[0]->name << "," << op1.toString()

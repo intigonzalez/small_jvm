@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <vector>
 
+
 #include "TemporaryFile.h"
 
 namespace jit {
@@ -20,13 +21,14 @@ TemporaryFile::TemporaryFile(std::string path, std::string suffix) {
 	int fd = mkstemps(&dst_path[0], suffix.size());
 	if(fd != -1) {
 		filePath.assign(dst_path.begin(), dst_path.end() - 1);
-		stream.open(path.c_str(), std::ios_base::trunc | std::ios_base::out);
+		stream.open(filePath.c_str(), std::ios_base::trunc | std::ios_base::out);
 		stream.close();
 	}
 }
 
 TemporaryFile::~TemporaryFile() {
 	stream.close();
+//	remove(filePath.c_str());
 }
 
 } /* namespace jit */

@@ -18,8 +18,6 @@
 #include <map>
 #include <vector>
 #include <iostream>
-#include <algorithm>
-#include <sstream>
 
 #include "../../utilities/TemporaryFile.h"
 
