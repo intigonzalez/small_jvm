@@ -9,6 +9,8 @@
 
 #include "Simplex86Generator.h"
 
+#include "../../jvmclassfile/JVMSpecUtils.h"
+
 #include <vector>
 #include <stack>
 #include <set>
@@ -17,7 +19,7 @@ using namespace std;
 
 namespace jit {
 
-JitCompiler::JitCompiler(jit::CodeSectionMemoryManager& section): codeSection(section) {
+JitCompiler::JitCompiler(jit::CodeSectionMemoryManager* section): codeSection(section) {
 
 }
 
@@ -26,15 +28,13 @@ JitCompiler::~JitCompiler() {
 }
 
 void* JitCompiler::compile(ClassFile* cf, MethodInfo* method){
-	void* addr = nullptr;
 	// first generate IR with quadruplos
 	Routine procedure = toQuadruplus(cf, method);
 	// build control-flow graph
 	procedure.buildControlFlowGraph();
 	procedure.print();
 	Simplex86Generator generator;
-	addr = generator.generate(procedure, codeSection);
-	method->address = addr;
+	void* addr = generator.generate(procedure, codeSection);
 	return addr;
 }
 
@@ -45,17 +45,19 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 	jit_value v1,v2,v;
 //	Objeto ref;
 	jint a, b;
-	u4 branch1;
+	int32_t branch1;
 	unsigned char branch2;
-	u4 i2;
+	int32_t i2;
+	int count;
+	MethodInfo* tmp;
 
-	int argumentsCount = cf->getParameterCount(method->descriptor_index);
+	int argumentsCount = JVMSpecUtils::countOfParameter(cf->getUTF(method->descriptor_index));
 	jit::Routine procedure(argumentsCount);
 //	long long l;
 	OP_QUAD oper;
-	AttributeInfo* ai = method->attributes[0];
+	//AttributeInfo* ai = method->attributes[0];
 	string method_name = cf->getUTF(method->name_index);
-	CodeAttribute* code = dynamic_cast<CodeAttribute*>(ai);
+	CodeAttribute* code = method->code;
 	if (code != 0) {
 		int index = 0;
 		while (index < code->code_length) {
@@ -63,11 +65,10 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			int nextIndex = procedure.q.size();
 			bytecode2qua.push_back( pair<int, int>(index, nextIndex));
 			switch (opcode) {
-//				case aconst_null:
-//					v.ref = 0;
-//					push(v.ref);
-//					index++;
-//					break;
+				case aconst_null:
+					values.push(jit_null());
+					index++;
+					break;
 				case aload:
 					b = (unsigned char)code->code[index+1];
 					values.push(jit_local_field(b, ObjRef));
@@ -124,7 +125,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					index++;
 					break;
 				case istore:
-					i2 = (u4) code->code[index + 1];
+					i2 = (int32_t) code->code[index + 1];
 					procedure.jit_assign_local(jit_local_field(i2, jit::Integer), values.top());
 					values.pop();
 //					setLocal(i2, popI());
@@ -152,7 +153,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					index++;
 					break;
 				case iload:
-					i2 = (u4) code->code[index + 1];
+					i2 = (int32_t) code->code[index + 1];
 					values.push(jit_local_field(i2, Integer));
 //					push(getLocalI(i2));
 					index += 2;
@@ -200,7 +201,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					a = popI();
 //					if (a>=0) {
 //						branch1 = (char) code->code[index + 1];
-//						branch2 = (unsigned char)code->code[index + 2];
+//						branch2 = (unsigned char)code->code[indeEsto es muy lindo 3 : 0xb7897008x + 2];
 //						index += (branch1 << 8) | branch2;
 //					} else
 //						index += 3;
@@ -282,13 +283,41 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					labels.insert(branch1);
 					index+=3;
 					break;
-//				case invokestatic:
-//					branch1 = (unsigned char) code->code[index + 1];
-//					branch2 = (unsigned char) code->code[index + 2];
-//					i2 = (branch1 << 8) | branch2;
+				case invokestatic:
+					branch1 = (unsigned char) code->code[index + 1];
+					branch2 = (unsigned char) code->code[index + 2];
+					i2 = (branch1 << 8) | branch2;
+					// push all the parameters
+					count = JVMSpecUtils::countOfParameter(cf, i2);
+					while (count) {
+						procedure.jit_regular_operation(PUSH_ARG, values.top(), useless_value, useless_value);
+						values.pop();
+						count--;
+					}
+					tmp = getMethodToCall(cf, i2);
+					if (tmp) {
+						if (tmp->address) {
+							// the method is compiled
+							values.push(procedure.jit_regular_operation(CALL_STATIC, jit_address(tmp->address), useless_value, Integer));
+						}
+						else {
+							// TODO: the class is loaded but the method is not compiled
+							// generate stub method to:
+							// 1 - Compile the method
+							// 2 - Fix the wrong pointer
+							// 3 - Call the method
+						}
+					}
+					else {
+						// TODO: the class is not loaded, generate stub method to:
+						// 1 - Load the class
+						// 2 - Fix the wrong pointer
+						// 3 - Compile the method
+					}
 //					generateStaticCall(cf, i2, code);
-//					index += 3;
-//					break;
+//					values.push(jit_constant(123));
+					index += 3;
+					break;
 //				case invokespecial:
 //					branch1 = (unsigned char) code->code[index + 1];
 //					branch2 = (unsigned char)code->code[index + 2];
@@ -303,9 +332,10 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					invokeSpecial(cf, i2, code);
 //					index += 3;
 //					break;
-//				case op_return:
-//					//tStack = p2;
-//					return;
+				case op_return:
+					procedure.jit_return_void();
+					index++;
+					break;
 				case ireturn:
 					//a = executionStack[--tStack];
 					//tStack = p2;
@@ -412,13 +442,14 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 	return procedure;
 }
 
-jit_value JitCompiler::getConstant(ClassFile* cf, u2 index, CodeAttribute* caller) {
-	Constant_Info* ri = dynamic_cast<Constant_Info*>(cf->info[index - 1]);
-	CONSTANT_Integer_info* ii = dynamic_cast<CONSTANT_Integer_info*>(ri);
-	if (ii)
+jit_value JitCompiler::getConstant(ClassFile* cf, int16_t index, CodeAttribute* caller) {
+	Constant_Info* ri = (Constant_Info*)(cf->info[index - 1]);
+	if (ri->tag() == CONSTANT_Integer) {
+		CONSTANT_Integer_info* ii = (CONSTANT_Integer_info*)(ri);
 		return jit_constant(ii->value);
+	}
 	else {
-		CONSTANT_String_Info* si = dynamic_cast<CONSTANT_String_Info*>(ri);
+		CONSTANT_String_Info* si = (CONSTANT_String_Info*)(ri);
 		if (si) {
 //					string utf = cf->getUTF(si->index);
 //					cout << utf << endl;
@@ -435,7 +466,7 @@ jit_value JitCompiler::getConstant(ClassFile* cf, u2 index, CodeAttribute* calle
 //					u2 i2 = cf2->getCompatibleMethodIndex("<init>","([C)V");
 //					MethodInfo* mi = cf2->methods[i2];
 //					AttributeInfo* ai = mi->attributes[0];
-//					CodeAttribute* code = dynamic_cast<CodeAttribute*>(ai);
+//					CodeAttribute* code = (CodeAttribute*>(ai);
 //
 //					newFrame(caller->max_locals);
 //					setLocal(0, obj2);
@@ -449,6 +480,33 @@ jit_value JitCompiler::getConstant(ClassFile* cf, u2 index, CodeAttribute* calle
 			return jit::useless_value;
 //					push(0.0f);
 		}
+	}
+}
+
+MethodInfo* JitCompiler::getMethodToCall(ClassFile* cf, int16_t idx) {
+	Constant_Info * cii = cf->info[idx- 1];
+	CONSTANT_Methodref_info* ci = (CONSTANT_Methodref_info*)(cii);
+	int16_t class_i = ci->class_index;
+	int16_t name_type = ci->name_and_type_index;
+	CONSTANT_NameAndType_info* name = (CONSTANT_NameAndType_info*)(cf->info[name_type
+					- 1]);
+	if (class_i == cf->this_class) {
+		// this class
+		std::cout << "Well, Calling static method in the same class" << endl;
+		string method_name = cf->getUTF(name->name_index);
+		string method_description = cf->getUTF(name->descriptor_index);
+		int16_t method_index = cf->getCompatibleMethodIndex(method_name.c_str(),
+						method_description.c_str());
+		MethodInfo* mi = cf->methods[method_index];
+		return mi;
+	}
+	else {
+		CONSTANT_Class_info* clase = (CONSTANT_Class_info*)(cf->info[class_i - 1]);
+
+		string class_name = cf->getUTF(clase->name_index);
+		string method_name = cf->getUTF(name->name_index);
+		string method_description = cf->getUTF(name->descriptor_index);
+		return nullptr;
 	}
 }
 

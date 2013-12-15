@@ -51,11 +51,11 @@ void ClassLoader::AddPath(const char* path) {
 ClassFile* ClassLoader::getParentClass(ClassFile* cf) {
 	if (cf->getClassName() == string("java/lang/Object"))
 		return 0;
-	u2 parent = cf->super_class;
+	int16_t parent = cf->super_class;
 
 	CONSTANT_Class_info* a = (CONSTANT_Class_info*) cf->info[parent - 1];
 
-	u2 i2 = a->name_index;
+	int16_t i2 = a->name_index;
 
 	string parentName = cf->getUTF(i2);
 	return getClass(parentName.c_str());
@@ -93,11 +93,11 @@ bool ClassLoader::IsSubclass(string subclass, string superclass) {
 
 	while (subclass != "java/lang/Object") {
 		ClassFile * sub = getClass(subclass.c_str());
-		u2 parent = sub->super_class;
+		int16_t parent = sub->super_class;
 
 		CONSTANT_Class_info* a = (CONSTANT_Class_info*) sub->info[parent - 1];
 
-		u2 i2 = a->name_index;
+		int16_t i2 = a->name_index;
 
 		string parentName = sub->getUTF(i2);
 		if (parentName != superclass)

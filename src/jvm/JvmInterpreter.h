@@ -21,15 +21,15 @@ namespace jvm {
 		public:
 			virtual void initiateClass(ClassFile* cf);
 
-			void generateStaticCall(ClassFile* cf, u4 methodReference, CodeAttribute* caller);
-			void invokeSpecial(ClassFile* cf, u4 methodReference, CodeAttribute* caller);
-			void fieldAccess(ClassFile* cf, u2 fieldRef, bool toWrite = true);
-			void fieldStaticAccess(ClassFile* cf, u2 fieldRef, bool toWrite = true);
+			void generateStaticCall(ClassFile* cf, int32_t methodReference, CodeAttribute* caller);
+			void invokeSpecial(ClassFile* cf, int32_t methodReference, CodeAttribute* caller);
+			void fieldAccess(ClassFile* cf, int16_t fieldRef, bool toWrite = true);
+			void fieldStaticAccess(ClassFile* cf, int16_t fieldRef, bool toWrite = true);
 
-			void createNewObject(ClassFile* cf, u4 methodReference);
+			void createNewObject(ClassFile* cf, int32_t methodReference);
 			void createNewRawArray(int type);
 
-			void putConstantInStack(ClassFile* cf, u2 index, CodeAttribute* caller);
+			void putConstantInStack(ClassFile* cf, int16_t index, CodeAttribute* caller);
 
 		public:
 			JvmInterpreter(ClassLoader* loader, Space* space);

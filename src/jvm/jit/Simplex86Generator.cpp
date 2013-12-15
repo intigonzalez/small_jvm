@@ -18,6 +18,8 @@
 #include <fstream>
 #include <cstdio>
 
+#include "../down_calls.h"
+
 using namespace std;
 
 namespace jit {
@@ -25,7 +27,7 @@ namespace jit {
 std::string Variable::toString() {
 	if (scope == Local || scope == Temporal)
 		return "[ebp-" + std::to_string(offsetInStack) + "]";
-	jit_value value = { type, scope, { n }};
+	jit_value value = { type, scope, n };
 	return value.toString();
 }
 
@@ -68,15 +70,15 @@ void Variable::attach(x86Register* r) {
 }
 
 Variable* Vars::get(const jit_value& value) const {
-	Variable v(value.scope, value.value.constant);
+	Variable v(value.meta.scope, value.value);
 	set<Variable*>::iterator itV = variables.find(&v);
 	if (itV == variables.end()) return nullptr;
 	Variable* vv = *itV;
-	if (value.scope == Temporal) {
+	if (value.meta.scope == Temporal) {
 		int index = vv->n + localCount - countOfParameters ;
 		vv->offsetInStack = 4+4*index;
 	}
-	else if (value.scope == Local) {
+	else if (value.meta.scope == Local) {
 		if ((unsigned)vv->n >= countOfParameters) {
 			int index = vv->n - countOfParameters;
 			vv->offsetInStack = 4+4*index;
@@ -147,7 +149,7 @@ x86Register* Simplex86Generator::getRegister(const jit_value& operand, const Var
 }
 
 std::string Simplex86Generator::getData(const jit_value& op2, const Vars& vars) {
-	if (op2.scope == Temporal || op2.scope == Local || op2.scope == Field) {
+	if (op2.meta.scope == Temporal || op2.meta.scope == Local || op2.meta.scope == Field) {
 		Variable* v = vars.get(op2);
 		if (v->inRegister())
 			return v->getRegisterWithValue()->name;
@@ -175,7 +177,7 @@ x86Register* Simplex86Generator::getRegistersForDiv(const jit_value& operand, co
 }
 
 std::string Simplex86Generator::getDataForDiv(const jit_value& operand, const Vars& vars) {
-	if (operand.scope == Constant) {
+	if (operand.meta.scope == Constant) {
 		registers[1]->freeRegister(functor);
 		functor.S() << "mov " << registers[1]->name << "," << operand.toString() << '\n';
 		return registers[1]->name;
@@ -218,9 +220,11 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		string tmpStr;
 		std::bitset<6> used;
 		int int_value;
+		void * pointer;
+
 		switch (ope) {
 		case ASSIGN:
-			if (op1.scope == Constant) {
+			if (op1.meta.scope == Constant) {
 				v = variables.get(res);
 				functor.S() << "mov dword " << v->toString() << "," << op1.toString()
 						<< '\n';
@@ -238,7 +242,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		case PLUS:
 		case MUL:
 		case SUB:
-			if (op1.scope != Constant || op2.scope != Constant) {
+			if (op1.meta.scope != Constant || op2.meta.scope != Constant) {
 				// find register for op1 and copy it if necessary
 				reg = getRegister(op1, variables);
 			} else {
@@ -252,7 +256,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			break;
 		case DIV:
 		case REM:
-			if (op1.scope != Constant || op2.scope != Constant) {
+			if (op1.meta.scope != Constant || op2.meta.scope != Constant) {
 				reg = getRegistersForDiv(op1, variables);
 			} else {
 				/* both are constants */
@@ -284,7 +288,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 				reg1->setSingleReference(v);
 				int_value = -1;
 			} else {
-				int_value = (op2.value.constant << 2) + 12; // FIXME : size of the array element
+				int_value = (op2.value << 2) + 12; // FIXME : size of the array element
 			}
 			// get a different register to store the values
 			reg2 = getRegister(res, variables, used.to_ulong(),false);
@@ -317,7 +321,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 				reg1->setSingleReference(v);
 				int_value = -1;
 			} else {
-				int_value = (op2.value.constant << 2) + 12; // FIXME : size of the array element
+				int_value = (op2.value << 2) + 12; // FIXME : size of the array element
 			}
 			// get a different register to store the values
 			v = variables.get(op1);
@@ -366,7 +370,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		case JGE:
 		case JLE:
 		case JG:
-			if (op1.scope != Constant || op2.scope != Constant) {
+			if (op1.meta.scope != Constant || op2.meta.scope != Constant) {
 				// find register for op1 and copy it if necessary
 				reg = getRegister(op1, variables);
 			} else {
@@ -380,8 +384,46 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 
 			functor.S() << tmpStr << res.toString() << '\n';
 			break;
+		case PUSH_ARG:
+			if (op1.meta.type == Integer || op1.meta.type == ObjRef || op1.meta.type == ArrRef) {
+				functor.S() << "push dword " << getData(op1, variables) << '\n';
+			}
+			break;
+		case CALL_STATIC:
+			if (op1.meta.scope == Constant) {
+				registers[0]->freeRegister(functor);
+				registers[2]->freeRegister(functor);
+				registers[3]->freeRegister(functor);
+				pointer = (void*)op1.value;
+				functor.S() << "call " << pointer << '\n';
+				functor.S() << "add esp, 8\n"; // FIXME, number of parameters
+				reg = registers[0];
+				v = variables.get(res);
+				v->setRegisterLocation(reg);
+				reg->setSingleReference(v);
+			}
+			break;
+		case NEW_ARRAY:
+			// op2 has the size of the array
+			functor.S() << "push dword " << getData(op1, variables) << '\n';
+			functor.S() << "push dword " << getData(op2, variables) << '\n';
+			// in the Intel ABI x86 calling convention the callee is able to modified registers EAX, ECX, EDX. Hence the caller should save them
+			registers[0]->freeRegister(functor);
+			registers[2]->freeRegister(functor);
+			registers[3]->freeRegister(functor);
+			pointer = (void*)&newRawArray;
+			functor.S() << "call " << pointer << '\n';
+			functor.S() << "add esp, 8\n";
+			reg = registers[0];
+			v = variables.get(res);
+			v->setRegisterLocation(reg);
+			reg->setSingleReference(v);
+			break;
 		case OP_RETURN:
-			if (op1.scope == Constant) {
+			if (op1.meta.scope == Useless) {
+				// do nothing, or maybe something with used registers
+			}
+			else if (op1.meta.scope == Constant) {
 				registers[0]->freeRegister(functor);
 				functor.S() << "mov " << registers[0]->name << "," << op1.toString()
 						<< '\n';
@@ -395,13 +437,14 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			}
 			functor.S() << "add esp, " << variables.variables.size() * 4 << '\n';
 			functor.S() << "pop ebp" << '\n';
+//			functor.S() << "leave\n";
 			functor.S() << "ret" << '\n';
 			break;
 		}
-		if (op1.scope == Temporal)
+		if (op1.meta.scope == Temporal)
 			variables.get(op1)->markAsForgetten();
 
-		if (op2.scope == Temporal)
+		if (op2.meta.scope == Temporal)
 			variables.get(op2)->markAsForgetten();
 	}
 	for (auto& r : registers)

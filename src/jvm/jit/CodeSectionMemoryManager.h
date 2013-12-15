@@ -23,7 +23,7 @@ public:
 	CodeSectionMemoryManager(size_t size);
 	virtual ~CodeSectionMemoryManager();
 
-	void* nextAddress() { return baseAddr; }
+	void* nextAddress() { return currentAddr; }
 	void* getChunck(size_t s);
 };
 

@@ -15,9 +15,9 @@ namespace jit {
 CodeSectionMemoryManager::CodeSectionMemoryManager(size_t size) {
 	this->size = size;
 	this->free = size;
-	currentAddr = mmap(nullptr, this->size, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	baseAddr = currentAddr;
-	if (currentAddr == MAP_FAILED) {
+	baseAddr = mmap(nullptr, this->size, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	currentAddr = baseAddr;
+	if (baseAddr == MAP_FAILED) {
 		throw new std::exception();
 	}
 }

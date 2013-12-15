@@ -17,17 +17,17 @@ using namespace std;
 #include "jvm/JvmInterpreter.h"
 #include "jvm/JvmExecuter.h"
 #include "jvm/JvmJit.h"
+#include "jvm/down_calls.h"
 
 
 using namespace jvm;
 
-extern char *optarg;
-extern int optind, opterr, optopt;
+extern int optind;
 
 int main(int argc, char* argv[])
 {
 	if (argc == 1) {
-		cerr << "Usage: Program [-i|-j] class_name [classes_paths]*" << endl;
+		cerr << "Usage: "<< argv[0] <<" [-i|-j] class_name [classes_paths]*" << endl;
 		return -1;
 	}
 	int c = 1;
@@ -42,11 +42,11 @@ int main(int argc, char* argv[])
 		   break;
 	   case '?':
 	   default:
-		   cerr << "Usage: Program  [-i|-j] class_name [classes_paths]*" << endl;
+		   cerr << "Usage: "<< argv[0] <<"  [-i|-j] class_name [classes_paths]*" << endl;
 		   return -1;
 	   }
 	}
-	ios_base::sync_with_stdio(false);
+//	ios_base::sync_with_stdio(true);
 	cout << "Starting : " << sizeof(void*) << '\n';
 	ClassLoader::Instance()->AddPath(".");
 	for (int i = optind+1; i < argc ; i++)
@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 	for (int i = 0 ; i < 1 ; i++) {
 		int result;
 		JvmExecuter::execute(cf,"accessingArray","(I[I)I",(JvmJit*)exec, [&result] (JvmExecuter* exec, void * addr) {
-			Objeto array = exec->createNewRawArray(10, 10);
+			Objeto array = newRawArray(T_INT, 20);
 			int value1 = 1;
 			int value2 = 2;
 			ObjectHandler::instance()->assignArrayElement(array, 0 , &value1);

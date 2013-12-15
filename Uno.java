@@ -29,7 +29,7 @@ public class Uno {
 			System.out.println("Result : " + result);
 		}
 		*/
-		int[]aa = new int[10];
+		int[]aa = new int[100];
 		aa[1] = 1;
  		int r = accessingArray(1, aa);
 		//System.out.println(r);

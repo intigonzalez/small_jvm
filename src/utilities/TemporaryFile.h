@@ -26,7 +26,7 @@ public:
 	const std::string getFilePath() { return filePath; }
 
 	void open() {
-		stream.open(filePath);
+		stream.open(filePath.c_str());
 	}
 
 	void close() {

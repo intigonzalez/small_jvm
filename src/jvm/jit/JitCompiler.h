@@ -16,15 +16,17 @@ namespace jit {
 
 class JitCompiler {
 public:
-	JitCompiler(jit::CodeSectionMemoryManager& section);
+	JitCompiler(jit::CodeSectionMemoryManager* section);
 	virtual ~JitCompiler();
 
 	void* compile(ClassFile* cf, MethodInfo* method);
 private:
 	jit::Routine toQuadruplus(ClassFile* cf, MethodInfo* method);
-	jit::jit_value getConstant(ClassFile* cf, u2 index, CodeAttribute* caller);
+	jit::jit_value getConstant(ClassFile* cf, int16_t index, CodeAttribute* caller);
 
-	jit::CodeSectionMemoryManager& codeSection;
+	MethodInfo* getMethodToCall(ClassFile* cf, int16_t idx);
+
+	jit::CodeSectionMemoryManager* codeSection;
 };
 
 } /* namespace jit */

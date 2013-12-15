@@ -44,11 +44,6 @@
 #define CONSTANT_InvokeDynamic 18
 
 
-
-typedef char u1;
-typedef short u2;
-typedef	int	u4;
-
 #define HIGH_BYTE(x) ((u1)(x >> 8))
 #define LOW_BYTE(x) ((u1)(x & 0x00ff))
 

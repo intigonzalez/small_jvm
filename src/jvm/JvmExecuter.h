@@ -54,8 +54,8 @@ namespace jvm {
 
 			static void execute(ClassFile* cf, const char* method, const char* description,
 					JvmExecuter* exec, std::function<void(JvmExecuter*, void* addr)> fn) {
-				u2 index = cf->getCompatibleMethodIndex(method, description);
-				if (index < 0 || index >= cf->methods.size())
+				int16_t index = cf->getCompatibleMethodIndex(method, description);
+				if (index < 0 || index >= cf->methods_count)
 					throw new exception();
 
 				MethodInfo* mi = cf->methods[index];
@@ -72,9 +72,6 @@ namespace jvm {
 			Type* buildInMemoryClass(ClassFile* cf);
 
 			void callStaticNativeMethod(string signature, Clase* clazz);
-
-			// utilities for object handling
-			Objeto createNewRawArray(int type, int n);
 	};
 
 } /* namespace jvm */

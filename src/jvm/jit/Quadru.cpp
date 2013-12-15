@@ -39,16 +39,37 @@ jit_value jit_constant(int c) {
 			Constant,
 			0
 	};
-	r.value.constant = c;
+	r.value = c;
 	return r;
 }
+
+jit_value jit_address(void* address) {
+	jit_value r = {
+				Integer,
+				Constant,
+				0
+		};
+	r.value = (int32_t)address;
+	return r;
+}
+
+jit_value jit_null() {
+	jit_value r = {
+			ObjRef,
+			Constant,
+			0
+	};
+	r.value = 0;
+	return r;
+}
+
 jit_value jit_local_field(int index, value_type type){
 	jit_value r = {
 			type,
 			Local,
 			0
 	};
-	r.value.constant = (unsigned char)index;
+	r.value = (unsigned char)index;
 	return r;
 }
 
@@ -58,7 +79,7 @@ jit_value jit_label(int pos) {
 			Label,
 			0
 	};
-	r.value.constant = pos;
+	r.value = pos;
 	return r;
 }
 
@@ -72,19 +93,19 @@ Routine::Routine(unsigned countOfParameters) {
  */
 jit_value Routine::jit_binary_operation(OP_QUAD op, jit_value op1, jit_value op2) {
 	Quadr r;
-	if (op1.type == op2.type) {
+	if (op1.meta.type == op2.meta.type) {
 		r.op1 = op1;
 		r.op2 = op2;
 		r.op = op;
-		r.res.type = op1.type;
-		r.res.scope = Temporal;
+		r.res.meta.type = op1.meta.type;
+		r.res.meta.scope = Temporal;
 		r.label = -1;
-		r.res.value.constant = getTempId();
+		r.res.value = getTempId();
 		q.push_back(r);
-		if (op1.scope == Temporal)
-			freeTmp.insert(op1.value.constant);
-		if (op2.scope == Temporal)
-			freeTmp.insert(op2.value.constant);
+		if (op1.meta.scope == Temporal)
+			freeTmp.insert(op1.value);
+		if (op2.meta.scope == Temporal)
+			freeTmp.insert(op2.value);
 		return r.res;
 	}
 	else throw new std::exception();
@@ -98,15 +119,15 @@ jit_value Routine::jit_regular_operation(OP_QUAD op, jit_value op1, jit_value op
 	r.op1 = op1;
 	r.op2 = op2;
 	r.op = op;
-	r.res.type = result_type;
-	r.res.scope = Temporal;
+	r.res.meta.type = result_type;
+	r.res.meta.scope = Temporal;
 	r.label = -1;
-	r.res.value.constant = getTempId();
+	r.res.value = getTempId();
 	q.push_back(r);
-	if (op1.scope == Temporal)
-		freeTmp.insert(op1.value.constant);
-	if (op2.scope == Temporal)
-		freeTmp.insert(op2.value.constant);
+	if (op1.meta.scope == Temporal)
+		freeTmp.insert(op1.value);
+	if (op2.meta.scope == Temporal)
+		freeTmp.insert(op2.value);
 	return r.res;
 }
 
@@ -121,10 +142,10 @@ void Routine::jit_regular_operation(OP_QUAD op, jit_value op1, jit_value op2, ji
 	r.res = resultRef;
 	r.label = -1;
 	q.push_back(r);
-	if (op1.scope == Temporal)
-		freeTmp.insert(op1.value.constant);
-	if (op2.scope == Temporal)
-		freeTmp.insert(op2.value.constant);
+	if (op1.meta.scope == Temporal)
+		freeTmp.insert(op1.value);
+	if (op2.meta.scope == Temporal)
+		freeTmp.insert(op2.value);
 }
 
 /**
@@ -134,6 +155,17 @@ void Routine::jit_return_int(jit_value r) {
 	Quadr result = {
 		OP_RETURN,
 		r,
+		useless_value,
+		useless_value,
+		-1
+	};
+	q.push_back(result);
+}
+
+void Routine::jit_return_void(void) {
+	Quadr result = {
+		OP_RETURN,
+		useless_value,
 		useless_value,
 		useless_value,
 		-1
@@ -152,8 +184,8 @@ void Routine::jit_assign_local(jit_value local,jit_value v) {
 		local,
 		-1
 	};
-	if (v.scope == Temporal)
-		freeTmp.insert(v.value.constant);
+	if (v.meta.scope == Temporal)
+		freeTmp.insert(v.value);
 	q.push_back(result);
 }
 
@@ -188,14 +220,14 @@ void Routine::buildControlFlowGraph() {
 			lastV = vertex;
 		}
 		nextIsNewBlock = false;
-		if ((*it).res.scope == Label) {
+		if ((*it).res.meta.scope == Label) {
 			// after any jmp (conditional or not) there is a new basic block
 			// create/access basic block for jump target
-			std::map<int , vertex_t>::iterator ir = map.find((*it).res.value.constant);
+			std::map<int , vertex_t>::iterator ir = map.find((*it).res.value);
 			if (ir == map.end()) {
 				vertex = boost::add_vertex(g);
 				g[vertex] = new BasicBlock();
-				map.insert( pair<int, vertex_t>((*it).res.value.constant, vertex));
+				map.insert( pair<int, vertex_t>((*it).res.value, vertex));
 			}
 			else vertex = (*ir).second;
 
@@ -251,6 +283,7 @@ void Routine::print() {
 	ofstream file("in.txt");
 	boost::write_graphviz(file, g, make_label_writer(g));
 	file.close();
+	std::cout <<  "dsffsdf " <<  sizeof(Quadr) << " " << sizeof(DataQuad) << " " <<  sizeof(jit_value) << std::endl;
 	for (unsigned i = 0 ; i < q.size() ; i++) {
 		Quadr tmp = q[i];
 		if (tmp.label != -1)

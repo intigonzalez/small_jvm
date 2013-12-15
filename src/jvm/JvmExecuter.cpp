@@ -10,6 +10,8 @@
 #include <iostream>
 #include <dlfcn.h>
 
+ #include "down_calls.h"
+
 using namespace std;
 
 namespace jvm {
@@ -18,14 +20,8 @@ namespace jvm {
 		this->loader = loader;
 		this->space = space;
 		this->countOfClassObjects = 0;
-		Type* t = new IntType();
-		classes[t->getName()] = t;
-		t = new JavaCharType();
-		classes[t->getName()] = t;
-		t = new LongType();
-		classes[t->getName()] = t;
-
-
+		
+		initDownCalls();
 
 		// jni
 		initJNI();
@@ -36,21 +32,6 @@ namespace jvm {
 
 	JvmExecuter::~JvmExecuter() {
 
-	}
-
-	int JvmExecuter::countParameters(string s) {
-		if (s == "")
-			return 0;
-		long int index;
-		switch (s[0]) {
-			case '[':
-				return countParameters(s.substr(1));
-			case 'L':
-				index = s.find(';');
-				return 1 + countParameters(s.substr(index + 1));
-			default:
-				return 1 + countParameters(s.substr(1));
-		}
 	}
 
 	ClassFile* JvmExecuter::loadAndInit(string class_name) {
@@ -66,13 +47,13 @@ namespace jvm {
 		Type* baseType;
 		switch (javaDescription[0]) {
 			case 'I':
-				t = classes["int"]; // FIXME : Use Singlenton
+				t = rawTypes["int"]; // FIXME : Use Singleton
 				break;
 			case 'C':
-				t = classes["char"]; // FIXME
+				t = rawTypes["char"]; // FIXME
 				break;
 			case 'J':
-				t = classes["long"]; // FIXME
+				t = rawTypes["long"]; // FIXME
 				break;
 			case 'L':
 				javaDescription = javaDescription.substr(1, javaDescription.size() - 2);
@@ -113,8 +94,8 @@ namespace jvm {
 		metaclasses[cname] = countOfClassObjects;
 		classObjects[countOfClassObjects++] = metaClass;
 		Space::instance()->includeRoot(&classObjects[countOfClassObjects - 1]);
-		u2 index = cf->getCompatibleMethodIndex("<clinit>", "()V");
-		if (index >= 0 && index < cf->methods.size())
+		int16_t index = cf->getCompatibleMethodIndex("<clinit>", "()V");
+		if (index >= 0 && index < cf->methods_count)
 			JvmExecuter::execute(cf, "<clinit>", "()V", this, [](JvmExecuter* exec, void * addr) {
 				void(*mm)() = (void(*)())addr;
 				mm();
@@ -136,27 +117,6 @@ namespace jvm {
 
 		}
 
-	}
-
-	Objeto JvmExecuter::createNewRawArray(int type, int n) {
-		Type* base;
-		string name = "[";
-		switch (type) {
-			case 10: // int
-				name += "I";
-				base = classes["int"];
-				break;
-			case 5:
-				name += "C";
-				base = classes["char"];
-				break;
-			default:
-				throw new std::exception();
-				break;
-		}
-		ArrayType* aType = new ArrayType(name, base);
-		Objeto obj = Space::instance()->newArray(aType, n);
-		return obj;
 	}
 
 }

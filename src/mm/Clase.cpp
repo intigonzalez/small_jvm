@@ -74,8 +74,7 @@ namespace MemoryManagement {
 		_index[name] = index;
 		_members.push_back(new Member(name, t));
 		int size = sizeof(Objeto);
-		Clase* a = dynamic_cast<Clase*>(_members[index]->getType());
-		if (!a)
+		if (_members[index]->getType()->IsRaw() || _members[index]->getType()->isArray())
 			size = _members[index]->getType()->size();
 
 		int offset = (index == 0) ? 0 : (_offsets[index - 1] + _sizes[index - 1]);

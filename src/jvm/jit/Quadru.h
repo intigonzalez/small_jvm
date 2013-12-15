@@ -12,7 +12,6 @@
 
 #include <vector>
 #include <string>
-#include <sstream>
 #include <iostream>
 #include <set>
 
@@ -23,26 +22,37 @@ namespace jit {
 enum value_scope {Constant, Local, Field, Temporal, Useless, Register, Label};
 enum value_type {Integer, Boolean, ObjRef,ArrRef};
 
+struct DataQuad {
+	value_type op1_type:2;
+	value_scope op1_scope:3;
+	value_type op2_type:2;
+	value_scope op2_scope:3;
+	value_type op3_type:2;
+	value_scope op3_scope:3;
+	bool label:1;
+	OP_QUAD op:16;
+};
+
 struct jit_value {
-	value_type type;
-	value_scope scope;
-	union {
-		int constant; // used with constants or local variables
-	} value;
+	struct {
+		value_type type:3;
+		value_scope scope:3;
+	} meta;
+	int32_t value;
 	std::string toString() const {
-		if (scope == Constant) {
-			return std::to_string(value.constant);
+		if (meta.scope == Constant) {
+			return std::to_string(value);
 		}
-		else if (scope == Useless)
+		else if (meta.scope == Useless)
 			return "_";
-		else if (scope == Temporal) {
-			return "T" + std::to_string(value.constant);
+		else if (meta.scope == Temporal) {
+			return "T" + std::to_string(value);
 		}
-		else if (scope == Local) {
-			return "L" + std::to_string(value.constant);
+		else if (meta.scope == Local) {
+			return "L" + std::to_string(value);
 		}
-		else if (scope == Label) {
-			return "LA" + std::to_string(value.constant);
+		else if (meta.scope == Label) {
+			return "LA" + std::to_string(value);
 		}
 		return "Wrong";
 	}
@@ -106,6 +116,7 @@ struct Routine {
 	 * Methods
 	 */
 	void jit_return_int(jit_value r);
+	void jit_return_void(void);
 
 	/**
 	 * Assignments
@@ -130,6 +141,8 @@ struct Routine {
  * Functions to deal with jit values
  */
 jit_value jit_constant(int c);
+jit_value jit_address(void* address);
+jit_value jit_null();
 jit_value jit_local_field(int index, value_type type);
 jit_value jit_label(int pos);
 

@@ -19,6 +19,9 @@
 #include <vector>
 #include <iostream>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "../../utilities/TemporaryFile.h"
 
@@ -115,9 +118,9 @@ public:
 	}
 
 	void addVariable(const jit_value& op) {
-		if (op.scope == Local || op.scope == Temporal || op.scope == Field) {
-			Variable* v0 = new Variable(op.scope, op.value.constant);
-			v0->type = op.type;
+		if (op.meta.scope == Local || op.meta.scope == Temporal || op.meta.scope == Field) {
+			Variable* v0 = new Variable(op.meta.scope, op.value);
+			v0->type = op.meta.type;
 			if (variables.find(v0) == variables.end() && v0->scope == Local)
 				localCount ++;
 			variables.insert(v0);
@@ -195,7 +198,7 @@ public:
 	virtual ~Simplex86Generator();
 
 	template <class CodeSectionManager>
-	void* generate(Routine& routine, CodeSectionManager& manager);
+	void* generate(Routine& routine, CodeSectionManager* manager);
 
 private:
 	std::vector<x86Register*> registers;
@@ -211,7 +214,7 @@ private:
 };
 
 template <class CodeSectionManager>
-void* Simplex86Generator::generate(Routine& routine, CodeSectionManager& manager) {
+void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager) {
 	// definition of involved variables
 	Vars variables(routine.countOfParameters);
 	for (unsigned i = 0 ; i < routine.q.size(); i++) {
@@ -222,7 +225,7 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager& manager
 	}
 	// init memory buffer
 
-	void *buf = manager.nextAddress();
+	void *buf = manager->nextAddress();
 	// open file
 	TemporaryFile file(".",".asm");
 	file.open();
@@ -268,14 +271,14 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager& manager
 	file.close();
 	std::string output = file.getFilePath().substr(0, file.getFilePath().size() - 4) + ".bin";
 	std::string command = "nasm -f bin -o " + output + " " + file.getFilePath();
-
 	int status = system(command.c_str());
 
-	std::ifstream file2 (output.c_str(), std::ios::in|std::ios::binary);
-	buf = manager.getChunck(4096);
+	int fd2 = open(output.c_str(), O_RDONLY);
+	buf = manager->getChunck(4096);
+	int leido = read(fd2, buf, 4096);
+	close(fd2);
+	std::cout << "Leido : " <<  leido << " " << std::endl;
 	//std::cout << command << " " << buf <<  std::endl;
-	file2.read((char*)buf, 4096);
-	file2.close();
 
 	return buf;
 }

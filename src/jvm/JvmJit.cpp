@@ -18,12 +18,8 @@ using namespace jit;
 
 namespace jvm {
 
-bool myfunc(pair<int, int>& pair, int v) {
-	return pair.first < v;
-}
-
 JvmJit::JvmJit(ClassLoader* loader, Space* space) : jvm::JvmExecuter(loader, space), codeSection(0x100000) {
-	std::unique_ptr<ThreadPool> tmp(new ThreadPool(4));
+	std::unique_ptr<ThreadPool> tmp(new ThreadPool(1));
 	pool = std::move(tmp);
 }
 
@@ -38,16 +34,19 @@ void* JvmJit::compile(ClassFile* cf, MethodInfo* method){
 	if (method->address)
 		addr = method->address;
 	else {
-		cout << "Compiling : " << cf->getClassName() << ":" << cf->getUTF(method->name_index) << '\n';
+//		cout << "Compiling : " << cf->getClassName() << ":" << cf->getUTF(method->name_index) << '\n';
 
 		// for now just one thread
-		auto result = pool.get()->enqueue([] (ClassFile* cf, MethodInfo* method, jit::CodeSectionMemoryManager& section) ->void*{
+		auto result = pool.get()->enqueue([] (ClassFile* cf, MethodInfo* method, jit::CodeSectionMemoryManager* section) ->void*{
 			jit::JitCompiler compiler(section);
 			return compiler.compile(cf, method);
-		}, cf, method, codeSection);
+		}, cf, method, &codeSection);
 
 		addr = result.get();
+		method->address = addr;
+		method->cleanCode();
 	}
+	cout << "Method " << cf->getClassName() << ":" << cf->getUTF(method->name_index) << " is in address : " << addr << endl;
 	return addr;
 }
 
