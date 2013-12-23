@@ -8,6 +8,7 @@
 #include "JitCompiler.h"
 
 #include "Simplex86Generator.h"
+#include "../JvmJit.h"
 
 #include "../../jvmclassfile/JVMSpecUtils.h"
 
@@ -215,15 +216,16 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					} else
 //						index += 3;
 //					break;
-//				case ifne:
-//					a = popI();
-//					if (a) {
-//						branch1 = (char) code->code[index + 1];
-//						branch2 = (unsigned char)code->code[index + 2];
-//						index += (branch1 << 8) | branch2;
-//					} else
-//						index += 3;
-//					break;
+				case ifne:
+					v1 = values.top(); values.pop();
+					oper = JNE;
+					branch1 = (char) code->code[index + 1];
+					branch2 = (unsigned char)code->code[index + 2];
+					branch1 = index + ((branch1 << 8) | branch2);
+					labels.insert(branch1);
+					procedure.jit_regular_operation(oper, v1, useless_value, jit_label(branch1));
+					index += 3;
+					break;
 //				case ifnull:
 //					ref = popRef();
 //					if (!ref) {
@@ -298,6 +300,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					if (tmp) {
 						if (tmp->address) {
 							// the method is compiled
+							// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
 							values.push(procedure.jit_regular_operation(CALL_STATIC, jit_address(tmp->address), useless_value, Integer));
 						}
 						else {
@@ -306,6 +309,9 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 							// 1 - Compile the method
 							// 2 - Fix the wrong pointer
 							// 3 - Call the method
+							a = jvm::JvmJit::instance()->addCompilationJob(cf, tmp);
+							// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
+							values.push(procedure.jit_regular_operation(CALL_STATIC, useless_value, jit_constant(a), Integer));
 						}
 					}
 					else {
@@ -313,6 +319,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 						// 1 - Load the class
 						// 2 - Fix the wrong pointer
 						// 3 - Compile the method
+						// 4 - Fix the wrong pointer
+						// 5 - Call the method
 					}
 //					generateStaticCall(cf, i2, code);
 //					values.push(jit_constant(123));

@@ -61,9 +61,17 @@ int main(int argc, char* argv[])
 
 	Space::instance()->setSpaceSize(4*1024*1024);
 
-	JvmExecuter* exec = (useNative)?
-			(new JvmJit(ClassLoader::Instance(), Space::instance())):
-			((JvmExecuter*)new JvmInterpreter(ClassLoader::Instance(), Space::instance()));
+	JvmExecuter* exec = JvmJit::instance(); //new JvmJit(ClassLoader::Instance(), Space::instance());
+
+	JvmExecuter::execute(cf,"main","([Ljava/lang/String;)V",(JvmJit*)exec, [] (JvmExecuter* exec, void * addr) {
+		void(*a)(Objeto) = (void(*)(Objeto))addr;
+		a(nullptr);
+	});
+
+	JvmExecuter::execute(cf,"main","([Ljava/lang/String;)V",(JvmJit*)exec, [] (JvmExecuter* exec, void * addr) {
+		void(*a)(Objeto) = (void(*)(Objeto))addr;
+		a(nullptr);
+	});
 
 	for (int i = 0 ; i < 1 ; i++) {
 		int result;
@@ -81,10 +89,15 @@ int main(int argc, char* argv[])
 		cout << "Results : " << result << endl;
 	}
 
-	JvmExecuter::execute(cf,"main","([Ljava/lang/String;)V",(JvmJit*)exec, [] (JvmExecuter* exec, void * addr) {
-		void(*a)(Objeto) = (void(*)(Objeto))addr;
-		a(nullptr);
+	int result1;
+	int n = 6;
+	JvmExecuter::execute(cf,"factorial","(I)I",(JvmJit*)exec, [&result1,n] (JvmExecuter* exec, void * addr) {
+		int(*a)(int) = (int(*)(int))addr;
+		int r = a(n); // for some crazy reason I cannot assign result = a(n)
+		result1 = r;
 	});
+
+	cout << "factorial(" << n << ") = " << result1 << endl;
 
 	ClassLoader::Release();
 	return 0;

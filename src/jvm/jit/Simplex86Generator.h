@@ -25,6 +25,8 @@
 
 #include "../../utilities/TemporaryFile.h"
 
+#include "../down_calls.h"
+
 namespace jit {
 
 class x86Register;
@@ -200,6 +202,8 @@ public:
 	template <class CodeSectionManager>
 	void* generate(Routine& routine, CodeSectionManager* manager);
 
+	std::vector<int> stubs;
+
 private:
 	std::vector<x86Register*> registers;
 	ReleaseX86RegisterFunctor functor;
@@ -268,16 +272,34 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 		}
 	}
 
+	// add stub methods
+	void *pointer = (void*)&getMethodAddressAndPatch;
+	//void *pointer = (void*)&getAddressForLoadedMethod;
+	for (std::vector<int>::iterator it = stubs.begin(), itEnd = stubs.end(); it != itEnd ; ++it) {
+		int id = *it;
+		functor.S() << "LabelStub" << id << ": push dword " << id << '\n';
+		functor.S() << "jmp " << pointer << '\n';
+//		functor.S() << "jmp finalResolution\n";
+	}
+//	if (stubs.size()) {
+//		functor.S() << "finalResolution: call dword " << pointer << '\n';
+//		functor.S() << "add esp, 4\n";
+//		functor.S() << "mov ecx, [esp]\n"; // return address
+//		//functor.S() << "sub ecx, 6\n"; // address of the value to patch
+//		functor.S() << "mov [ecx-6], eax\n"; // patch
+//		functor.S() << "jmp eax\n"; // jump to the method
+//	}
+
 	file.close();
 	std::string output = file.getFilePath().substr(0, file.getFilePath().size() - 4) + ".bin";
 	std::string command = "nasm -f bin -o " + output + " " + file.getFilePath();
-	int status = system(command.c_str());
+	int status = std::system(command.c_str());
 
 	int fd2 = open(output.c_str(), O_RDONLY);
 	buf = manager->getChunck(4096);
 	int leido = read(fd2, buf, 4096);
 	close(fd2);
-	std::cout << "Leido : " <<  leido << " " << std::endl;
+//	std::cout << "Leido : " <<  leido << " " << std::endl;
 	//std::cout << command << " " << buf <<  std::endl;
 
 	return buf;

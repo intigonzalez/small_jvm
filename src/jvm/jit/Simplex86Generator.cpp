@@ -205,6 +205,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 	operatorToInstruction[PLUS] = "add ";
 	operatorToInstruction[SUB] = "sub ";
 	operatorToInstruction[MUL] = "imul ";
+	int nbParameters = 0;
 	for (unsigned i = 0; i < bb->q.size(); i++) {
 		if (bb->q[i].label != -1)
 			functor.S() << "LA" << bb->q[i].label << ":\n";
@@ -379,29 +380,45 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			functor.S() << "cmp " << reg->name << ","
 					<< getData(op2, variables) << '\n';
 			tmpStr = "jge ";
-			if (ope == 4) tmpStr = "jle ";
-			if (ope == 5) tmpStr = "jg ";
+			if (ope == JLE) tmpStr = "jle ";
+			if (ope == JG) tmpStr = "jg ";
 
+			functor.S() << tmpStr << res.toString() << '\n';
+			break;
+		case JNE:
+			// find register for op1 and copy it if necessary
+			reg = getRegister(op1, variables);
+			functor.S() << "cmp " << reg->name << ", 0\n";
+			tmpStr = "jne ";
 			functor.S() << tmpStr << res.toString() << '\n';
 			break;
 		case PUSH_ARG:
 			if (op1.meta.type == Integer || op1.meta.type == ObjRef || op1.meta.type == ArrRef) {
 				functor.S() << "push dword " << getData(op1, variables) << '\n';
+				nbParameters++;
 			}
+			// FIXME: other cases
 			break;
 		case CALL_STATIC:
+			registers[0]->freeRegister(functor);
+			registers[2]->freeRegister(functor);
+			registers[3]->freeRegister(functor);
 			if (op1.meta.scope == Constant) {
-				registers[0]->freeRegister(functor);
-				registers[2]->freeRegister(functor);
-				registers[3]->freeRegister(functor);
 				pointer = (void*)op1.value;
 				functor.S() << "call " << pointer << '\n';
-				functor.S() << "add esp, 8\n"; // FIXME, number of parameters
-				reg = registers[0];
-				v = variables.get(res);
-				v->setRegisterLocation(reg);
-				reg->setSingleReference(v);
 			}
+			else if (op2.meta.scope == Constant) {
+				// We detect an indirect call, so we need to insert the call to the stub method
+				functor.S() << "mov ecx, LabelStub" << op2.value << '\n';
+				functor.S() << "call ecx\n";
+				stubs.push_back(op2.value);
+			}
+			functor.S() << "add esp, " << nbParameters*4 << '\n'; // FIXME, number of parameters
+			nbParameters = 0;
+			reg = registers[0];
+			v = variables.get(res);
+			v->setRegisterLocation(reg);
+			reg->setSingleReference(v);
 			break;
 		case NEW_ARRAY:
 			// op2 has the size of the array

@@ -31,7 +31,11 @@ public class Uno {
 		*/
 		int[]aa = new int[100];
 		aa[1] = 1;
- 		int r = accessingArray(1, aa);
+		for (int i = 0 ; i < 2 ; i++) {
+ 			int r = accessingArray(1, aa);
+			r = accessingArray(1, aa);
+			r = accessingArray(1, aa);
+		}
 		//System.out.println(r);
 	}
 

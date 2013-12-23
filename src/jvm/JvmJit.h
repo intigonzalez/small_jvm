@@ -17,6 +17,7 @@
 #include <utility>
 #include <string>
 #include <functional>
+#include <mutex>
 
 using namespace std;
 
@@ -25,13 +26,32 @@ namespace jvm {
 class JvmJit: public jvm::JvmExecuter {
 private:
 
-	std::unique_ptr<ThreadPool> pool;
+	struct CompilationJob {
+		ClassFile* cf;
+		MethodInfo* method;
+		CompilationJob(ClassFile* clazz, MethodInfo* m) : cf(clazz), method(m) { }
+//		CompilationJob(CompilationJob& other) {
+//			cf = other.cf;
+//			method = other.method;
+//		}
+//		CompilationJob& operator=(CompilationJob& other) {
+//			cf = other.cf;
+//			method = other.method;
+//			return *(this);
+//		}
+	};
 
+	std::unique_ptr<ThreadPool> pool;
 	jit::CodeSectionMemoryManager codeSection;
 
+	std::atomic<int> idJobs;
+	std::map<int, CompilationJob*> jobs;
+	std::mutex mutex_jobs;
+
 	void* compile(ClassFile* cf, MethodInfo* method);
-public:
 	JvmJit(ClassLoader* loader, Space* space);
+public:
+
 	virtual ~JvmJit();
 	virtual void initiateClass(ClassFile* cf);
 
@@ -39,6 +59,12 @@ public:
 		void* addr = compile(cf, method);
 		fn(this, addr);
 	}
+
+	int addCompilationJob(ClassFile* cf, MethodInfo* method);
+
+	void* getAddrFromCompilationJobId(int id);
+
+	static JvmJit* instance();
 };
 
 } /* namespace jit */

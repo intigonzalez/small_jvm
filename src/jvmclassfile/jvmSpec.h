@@ -178,7 +178,6 @@ public:
 
 class CONSTANT_Double_Info : public Constant_Info {
 public:
-
     CONSTANT_Double_Info(ifstream& f): Constant_Info(CONSTANT_Double) {
         int32_t n;
         Load(&n, f);
@@ -188,7 +187,6 @@ public:
 
 class CONSTANT_MethodHandle_Info : public Constant_Info {
 public:
-
     CONSTANT_MethodHandle_Info(ifstream& f) : Constant_Info(CONSTANT_MethodHandle) {
         int16_t n;
         int8_t m;
@@ -241,8 +239,8 @@ public:
     int16_t max_locals;
     int32_t code_length;
     int8_t* code;
-    int16_t exception_table_length; // siempre 0
-    int16_t attributes_count; // siempre 0
+    int16_t exception_table_length; // always 0, FIXME
+    int16_t attributes_count; // always 0, FIXME
 
     CodeAttribute(ifstream& f, ClassFile* cf);
 

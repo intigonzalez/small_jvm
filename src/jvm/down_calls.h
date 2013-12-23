@@ -1,10 +1,6 @@
 #ifndef __DOWN_CALLS__
 #define __DOWN_CALLS__
 
-#ifdef __cplusplus
-//extern "C" {
-#endif
-
 #include "../mm/Objeto.h"
 #include "../jvmclassfile/jvmSpec.h"
 
@@ -23,8 +19,47 @@ void initDownCalls();
 Objeto newRawArray(RawArrayTypes type, int length);
 
 
+
 #ifdef __cplusplus
-//}
+extern "C" {
+#endif
+
+/**
+ * Get the address of a method already loaded within some class.
+ * The function compiles the method if needed.
+ */
+void* getAddressForLoadedMethod(int id);
+
+/**
+ * This pseudo-function modifies the calling context to fix the target address of a previously non-compiled method.
+ * Long Explanation: A method is compiled the first time it is called; hence it is possible to compile a caller before
+ * having the actual address of the callee. We create an stub method to solve the problem. Such a method in charge of:
+ * 1 - Compile the method
+ * 2 - Return the address
+ * 3 - Fix the previous call to reflect the new address, this means that the stub won't be called again
+ * 4 - jmp to the address
+ *
+ * @return - It acts as if a call to the real function has been performed.
+ * Note: This function is not intended to be called from the source code. Instead, it should be called from Jitted Code.
+ *
+ * When this pseudo-function is called it expect that a code as the one shown below has been executed (Intel Syntax):
+ *
+ * push arg_n
+ * ...
+ * push arg_1
+ * mov ecx, StubAddress
+ * call ecx
+ * add esp, n*4
+ * ...
+ * StubAddress:
+ * push StubId
+ * jmp getMethodAddressAndPatch
+ * ...
+ * getMethodAddressAndPatch:
+ */
+void getMethodAddressAndPatch(); // this is not a function, in fact, it is a routine in assembly
+#ifdef __cplusplus
+}
 #endif
 
 #endif

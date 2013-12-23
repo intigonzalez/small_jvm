@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "down_calls.h"
+#include "JvmJit.h"
 
 std::map<std::string, Type*> rawTypes;
 
@@ -37,4 +38,8 @@ Objeto newRawArray(RawArrayTypes type, int length)
 	ArrayType* aType = new ArrayType(name, base);
 	Objeto obj = Space::instance()->newArray(aType, length);
 	return obj;
+}
+
+void* getAddressForLoadedMethod(int id) {
+	return jvm::JvmJit::instance()->getAddrFromCompilationJobId(id);
 }
