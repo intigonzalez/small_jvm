@@ -79,7 +79,7 @@ namespace jvm {
 			static int countParameters(string s);
 
 			Type* getType(string javaDescription);
-			Type* buildInMemoryClass(ClassFile* cf); // fixme : This should be private
+			Type* buildInMemoryClass(ClassFile* cf); // fixme : This should be private and thread safe
 
 			void callStaticNativeMethod(string signature, Clase* clazz);
 	};

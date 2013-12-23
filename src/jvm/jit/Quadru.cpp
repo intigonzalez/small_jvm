@@ -45,7 +45,7 @@ jit_value jit_constant(int c) {
 
 jit_value jit_address(void* address) {
 	jit_value r = {
-				Integer,
+				ObjRef,
 				Constant,
 				0
 		};

@@ -23,23 +23,21 @@ using namespace std;
 
 namespace jvm {
 
+struct CompilationJob {
+	ClassFile* cf;
+	MethodInfo* method;
+	CompilationJob(ClassFile* clazz, MethodInfo* m) : cf(clazz), method(m) { }
+};
+
+struct LoadingAndCompile {
+	ClassFile* callerClass; // class that trigger the initialization of the new class
+	int methodRef;
+	LoadingAndCompile(ClassFile* parent, int ref):
+		callerClass(parent), methodRef(ref) { }
+};
+
 class JvmJit: public jvm::JvmExecuter {
 private:
-
-	struct CompilationJob {
-		ClassFile* cf;
-		MethodInfo* method;
-		CompilationJob(ClassFile* clazz, MethodInfo* m) : cf(clazz), method(m) { }
-//		CompilationJob(CompilationJob& other) {
-//			cf = other.cf;
-//			method = other.method;
-//		}
-//		CompilationJob& operator=(CompilationJob& other) {
-//			cf = other.cf;
-//			method = other.method;
-//			return *(this);
-//		}
-	};
 
 	std::unique_ptr<ThreadPool> pool;
 	jit::CodeSectionMemoryManager codeSection;
@@ -63,6 +61,7 @@ public:
 	int addCompilationJob(ClassFile* cf, MethodInfo* method);
 
 	void* getAddrFromCompilationJobId(int id);
+	void* getAddrFromLoadingJob(LoadingAndCompile* job);
 
 	static JvmJit* instance();
 };

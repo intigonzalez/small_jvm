@@ -149,4 +149,14 @@ public class Uno {
 		if (a == 0) return 1;
 		return a * factorial(a - 1);	
 	}
+
+	static class TmpClass {
+		static int method() {
+			return 456787;
+		}
+	}
+
+	public static int anotherTest() {
+		return TmpClass.method();
+	}
 }

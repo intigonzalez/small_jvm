@@ -203,6 +203,7 @@ public:
 	void* generate(Routine& routine, CodeSectionManager* manager);
 
 	std::vector<int> stubs;
+	std::vector<void*> stubs2;
 
 private:
 	std::vector<x86Register*> registers;
@@ -277,6 +278,13 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	for (std::vector<int>::iterator it = stubs.begin(), itEnd = stubs.end(); it != itEnd ; ++it) {
 		int id = *it;
 		functor.S() << "LabelStub" << id << ": push dword " << id << '\n';
+		functor.S() << "jmp " << pointer << '\n';
+	}
+	pointer = (void*)&loadClassCompileMethodAndPath;
+	for (std::vector<void*>::iterator it = stubs2.begin(), itEnd = stubs2.end(); it != itEnd ; ++it) {
+		void* address = *it;
+		int n = std::distance(stubs2.begin(),it) + 100000;
+		functor.S() << "LabelStub" << n << ": push dword " << address << '\n';
 		functor.S() << "jmp " << pointer << '\n';
 	}
 

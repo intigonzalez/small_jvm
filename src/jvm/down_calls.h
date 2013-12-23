@@ -30,6 +30,8 @@ extern "C" {
  */
 void* getAddressForLoadedMethod(int id);
 
+void* highlevel_loadClassCompileMethodAndPath(void* job);
+
 /**
  * This pseudo-function modifies the calling context to fix the target address of a previously non-compiled method.
  * Long Explanation: A method is compiled the first time it is called; hence it is possible to compile a caller before
@@ -58,6 +60,9 @@ void* getAddressForLoadedMethod(int id);
  * getMethodAddressAndPatch:
  */
 void getMethodAddressAndPatch(); // this is not a function, in fact, it is a routine in assembly
+
+
+void loadClassCompileMethodAndPath();
 #ifdef __cplusplus
 }
 #endif

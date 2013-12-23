@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
 		ClassLoader::Instance()->AddPath(argv[i]);
 
 	Space::instance()->setSpaceSize(4*1024*1024);
-
+	
 	JvmExecuter* exec = JvmJit::instance(); //new JvmJit(ClassLoader::Instance(), Space::instance());
 
 	ClassFile* cf = exec->loadAndInit(argv[optind]);// ClassLoader::Instance()->getClass(argv[optind]);
@@ -98,6 +98,15 @@ int main(int argc, char* argv[])
 	});
 
 	cout << "factorial(" << n << ") = " << result1 << endl;
+
+	JvmExecuter::execute(cf,"anotherTest","()I",(JvmJit*)exec, [&result1] (JvmExecuter* exec, void * addr) {
+		int(*a)() = (int(*)())addr;
+		int r = a(); // for some crazy reason I cannot assign result = a(n)
+		result1 = r;
+	});
+
+
+	cout << "anotherTest() = " << result1 << endl;
 
 	ClassLoader::Release();
 	return 0;

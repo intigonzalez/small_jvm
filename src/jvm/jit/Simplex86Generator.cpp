@@ -403,15 +403,20 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			registers[0]->freeRegister(functor);
 			registers[2]->freeRegister(functor);
 			registers[3]->freeRegister(functor);
-			if (op1.meta.scope == Constant) {
+			if (op1.meta.scope == Constant && op1.meta.type == ObjRef) {
 				pointer = (void*)op1.value;
 				functor.S() << "call " << pointer << '\n';
 			}
-			else if (op2.meta.scope == Constant) {
+			else if (op2.meta.scope == Constant && op2.meta.type == Integer) {
 				// We detect an indirect call, so we need to insert the call to the stub method
 				functor.S() << "mov ecx, LabelStub" << op2.value << '\n';
 				functor.S() << "call ecx\n";
 				stubs.push_back(op2.value);
+			}
+			else if (op2.meta.scope == Constant && op2.meta.type == ObjRef) {
+				functor.S() << "mov ecx, LabelStub" << (stubs2.size() + 100000) << '\n';
+				functor.S() << "call ecx\n";
+				stubs2.push_back((void*)op2.value);
 			}
 			functor.S() << "add esp, " << nbParameters*4 << '\n'; // FIXME, number of parameters
 			nbParameters = 0;

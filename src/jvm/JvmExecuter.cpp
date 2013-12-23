@@ -44,7 +44,8 @@ namespace jvm {
 			while (tmp) {
 				classesToInitialize.push(tmp);
 				// do this in a different thread or not?
-				// this operation is affected by the garbage collector
+				// FIXME: this operation is affected by the garbage collector
+				// FIXMEW: it also is problematic because it involves reading classes from Disk
 				buildInMemoryClass(tmp);
 				// this operation is not affected by the garbage collector
 				tmp = loader->getParentClass(tmp);
@@ -89,6 +90,7 @@ namespace jvm {
 	}
 
 	Type* JvmExecuter::buildInMemoryClass(ClassFile* cf) {
+
 		string cname = cf->getClassName();
 		if (classes.find(cname) != classes.end())
 			return classes[cname];

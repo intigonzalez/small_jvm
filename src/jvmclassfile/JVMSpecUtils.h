@@ -23,6 +23,9 @@ class JVMSpecUtils {
 public:
 	static int countOfParameter(std::string s);
 	static int countOfParameter(ClassFile* clazz, int idxInPoolToMethodRef);
+	static std::string getClassNameFromMethodRef(ClassFile* clazz, int ref);
+	static std::string getMethodNameFromMethodRef(ClassFile* clazz, int ref);
+	static std::string getMethodDescriptionFromMethodRef(ClassFile* clazz, int ref);
 };
 
 
