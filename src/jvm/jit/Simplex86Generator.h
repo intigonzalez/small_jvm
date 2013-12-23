@@ -274,21 +274,11 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 
 	// add stub methods
 	void *pointer = (void*)&getMethodAddressAndPatch;
-	//void *pointer = (void*)&getAddressForLoadedMethod;
 	for (std::vector<int>::iterator it = stubs.begin(), itEnd = stubs.end(); it != itEnd ; ++it) {
 		int id = *it;
 		functor.S() << "LabelStub" << id << ": push dword " << id << '\n';
 		functor.S() << "jmp " << pointer << '\n';
-//		functor.S() << "jmp finalResolution\n";
 	}
-//	if (stubs.size()) {
-//		functor.S() << "finalResolution: call dword " << pointer << '\n';
-//		functor.S() << "add esp, 4\n";
-//		functor.S() << "mov ecx, [esp]\n"; // return address
-//		//functor.S() << "sub ecx, 6\n"; // address of the value to patch
-//		functor.S() << "mov [ecx-6], eax\n"; // patch
-//		functor.S() << "jmp eax\n"; // jump to the method
-//	}
 
 	file.close();
 	std::string output = file.getFilePath().substr(0, file.getFilePath().size() - 4) + ".bin";

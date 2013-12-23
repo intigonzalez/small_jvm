@@ -12,32 +12,6 @@
 using namespace std;
 
 
-/**
- ClassFile
- */
-//ClassFile::ClassFile() {
-//	access_flag = 0;
-//	this_class = 0;
-//	super_class = 0;
-//	constant_pool_count = 1;
-//	interfaces_count = 0;
-//	fields_count = 0;
-//	methods_count = 0;
-//	attributes_count = 0;
-//
-//	initialized = false;
-//
-//	AddConstantUTF8("Code");
-//
-//	// we must add a default contructor
-//	//MethodInfo* minfo = AddMethod("<init>", "()V", ACC_PUBLIC);
-//
-//	// aload_0,invokespecial, 0,0 ,return
-//	//u1 code[] = {aload_0,invokespecial,0,0, op_return};
-//
-//	//minfo->AddCode(128,10,code,sizeof(code));
-//}
-
 ClassFile::~ClassFile() {
 	for (unsigned i = 0; i < info.size(); i++) {
 		int tag = info[i]->tag();
@@ -55,96 +29,9 @@ ClassFile::~ClassFile() {
 	delete [] interfaces;
 }
 
-//MethodInfo* ClassFile::AddMethod(const char* name, const char* descriptor, int16_t access) {
-//	MethodInfo* mi = new MethodInfo();
-//	mi->name_index = AddConstantUTF8(name);
-//	mi->descriptor_index = AddConstantUTF8(descriptor);
-//	mi->access_flags = access;
-//	mi->attributes_count = 0;
-//	methods.push_back(mi);
-//	methods_count++;
-//	return mi;
-//}
-
-//FieldInfo* ClassFile::AddField(const char* name, int16_t description_index, int16_t access) {
-//	FieldInfo* field = new FieldInfo(access, AddConstantUTF8(name), description_index);
-//	fields.push_back(field);
-//	fields_count++;
-//	return field;
-//}
-
-//int16_t ClassFile::AddNameType(int16_t name, int16_t description) {
-//	CONSTANT_NameAndType_info* i = new CONSTANT_NameAndType_info(name, description);
-//	info.push_back(i);
-//	constant_pool_count++;
-//	return info.size();
-//}
-//
-//int16_t ClassFile::AddMethodRef(int16_t class_index, int16_t name_and_type_index) {
-//	CONSTANT_Methodref_info* i = new CONSTANT_Methodref_info(class_index, name_and_type_index);
-//	info.push_back(i);
-//	constant_pool_count++;
-//	return info.size();
-//}
-
 void ClassFile::SetAccesesRight(int16_t access) {
 	this->access_flag = access;
 }
-
-//int ClassFile::AddConstantUTF8(const char* s) {
-//	Constant_Info_UTF8* utf8 = new Constant_Info_UTF8(s);
-//	info.push_back(utf8); // maybe this string is in table, I should use a dictionary
-//	constant_pool_count++;
-//	return info.size();
-//}
-//
-//void ClassFile::SetClass(const char* name) {
-//
-//	CONSTANT_Class_info* class_info = new CONSTANT_Class_info(AddConstantUTF8(name));
-//	info.push_back(class_info);
-//	this_class = info.size();
-//	constant_pool_count++;
-//}
-//
-//void ClassFile::SetSuperClass(const char* name) {
-//	CONSTANT_Class_info* class_info = new CONSTANT_Class_info(AddConstantUTF8(name));
-//	info.push_back(class_info);
-//	super_class = info.size();
-//	constant_pool_count++;
-//}
-
-//int16_t ClassFile::AddFieldRef(int16_t class_index, int16_t name_and_type_index) {
-//	pair<int16_t, int16_t> p(class_index, name_and_type_index);
-//	if (_pairs.find(p) == _pairs.end()) {
-//		CONSTANT_Fieldref_info* fieldRef = new CONSTANT_Fieldref_info(class_index, name_and_type_index);
-//		info.push_back(fieldRef);
-//		constant_pool_count++;
-//		_pairs[p] = info.size();
-//	}
-//	return _pairs[p];
-//}
-
-//int16_t ClassFile::AddInt(int32_t value) {
-//	if (_integersConst.find(value) == _integersConst.end()) {
-//		CONSTANT_Integer_info* v = new CONSTANT_Integer_info(value);
-//		info.push_back(v);
-//		_integersConst[value] = info.size();
-//		constant_pool_count++;
-//	}
-//	return _integersConst[value];
-//}
-
-//int16_t ClassFile::AddFloat(float value) {
-//	CONSTANT_Float_info* v = new CONSTANT_Float_info(value);
-//	info.push_back(v);
-//	constant_pool_count++;
-//	return info.size();
-//}
-
-//void ClassFile::AddMethod(MethodInfo* m) {
-//	methods.push_back(m);
-//	methods_count++;
-//}
 
 ClassFile::ClassFile(const char* name) {
 	initialized = false;
@@ -273,22 +160,6 @@ int16_t ClassFile::getUTFIndex(const char* code) {
 	}
 	return -1;
 }
-
-//int16_t ClassFile::AddString(const char* s) {
-//	string s2(s);
-//	s2 = s2.substr(1, s2.size() - 2);
-//	Constant_Info* ci = new CONSTANT_String_Info(AddConstantUTF8(s2.c_str()));
-//	info.push_back(ci);
-//	constant_pool_count++;
-//	return info.size();
-//}
-//
-//int16_t ClassFile::AddClassReference(const char* name) {
-//	Constant_Info* ci = new CONSTANT_Class_info(AddConstantUTF8(name));
-//	info.push_back(ci);
-//	constant_pool_count++;
-//	return info.size();
-//}
 
 int16_t ClassFile::getCompatibleMethodIndex(const char* methodName, const char* description) {
 	int i = 0;

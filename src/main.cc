@@ -52,16 +52,16 @@ int main(int argc, char* argv[])
 	for (int i = optind+1; i < argc ; i++)
 		ClassLoader::Instance()->AddPath(argv[i]);
 
-	ClassFile* cf = ClassLoader::Instance()->getClass(argv[optind]);
-
-	if (cf == NULL) {
-		cerr << "Wrong class file!!!" << '\n';
-		return 1;
-	}
-
 	Space::instance()->setSpaceSize(4*1024*1024);
 
 	JvmExecuter* exec = JvmJit::instance(); //new JvmJit(ClassLoader::Instance(), Space::instance());
+
+	ClassFile* cf = exec->loadAndInit(argv[optind]);// ClassLoader::Instance()->getClass(argv[optind]);
+
+	if (cf == nullptr) {
+		cerr << "Wrong class file: " << argv[optind] << '\n';
+		std::exit(1);
+	}
 
 	JvmExecuter::execute(cf,"main","([Ljava/lang/String;)V",(JvmJit*)exec, [] (JvmExecuter* exec, void * addr) {
 		void(*a)(Objeto) = (void(*)(Objeto))addr;

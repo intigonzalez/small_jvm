@@ -8,6 +8,7 @@
 #include "JvmExecuter.h"
 #include <exception>
 #include <iostream>
+#include <stack>
 #include <dlfcn.h>
 
  #include "down_calls.h"
@@ -35,9 +36,25 @@ namespace jvm {
 	}
 
 	ClassFile* JvmExecuter::loadAndInit(string class_name) {
+		// this operation is not affected by the garbage collector
 		ClassFile* cf = loader->getClass(class_name.c_str());
-		buildInMemoryClass(cf);
-		initiateClass(cf);
+		if (cf) {
+			ClassFile* tmp = cf;
+			stack<ClassFile*> classesToInitialize;
+			while (tmp) {
+				classesToInitialize.push(tmp);
+				// do this in a different thread or not?
+				// this operation is affected by the garbage collector
+				buildInMemoryClass(tmp);
+				// this operation is not affected by the garbage collector
+				tmp = loader->getParentClass(tmp);
+			}
+			// now, initialize classes
+			while (!classesToInitialize.empty()) {
+				tmp = classesToInitialize.top(); classesToInitialize.pop();
+				initiateClass(tmp);
+			}
+		}
 		return cf;
 	}
 
@@ -78,7 +95,7 @@ namespace jvm {
 		Clase* a = new Clase(cname);
 		Clase* classA = new Clase(cname);
 		classes[cname] = a;
-		for (int i = 0; i < cf->fields_count; i++) {
+		for (int i = 0; i < cf->fields_count; ++i) {
 
 			FieldInfo* fi = cf->fields[i];
 			string name = cf->getUTF(fi->name_index);
@@ -94,12 +111,6 @@ namespace jvm {
 		metaclasses[cname] = countOfClassObjects;
 		classObjects[countOfClassObjects++] = metaClass;
 		Space::instance()->includeRoot(&classObjects[countOfClassObjects - 1]);
-		int16_t index = cf->getCompatibleMethodIndex("<clinit>", "()V");
-		if (index >= 0 && index < cf->methods_count)
-			JvmExecuter::execute(cf, "<clinit>", "()V", this, [](JvmExecuter* exec, void * addr) {
-				void(*mm)() = (void(*)())addr;
-				mm();
-			});
 		return a;
 	}
 

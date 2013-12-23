@@ -492,6 +492,7 @@ jit_value JitCompiler::getConstant(ClassFile* cf, int16_t index, CodeAttribute* 
 }
 
 MethodInfo* JitCompiler::getMethodToCall(ClassFile* cf, int16_t idx) {
+	// FIXME, lot of cases need solution
 	Constant_Info * cii = cf->info[idx- 1];
 	CONSTANT_Methodref_info* ci = (CONSTANT_Methodref_info*)(cii);
 	int16_t class_i = ci->class_index;

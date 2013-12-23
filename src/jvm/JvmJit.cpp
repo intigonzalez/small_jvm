@@ -28,7 +28,13 @@ JvmJit::JvmJit(ClassLoader* loader, Space* space) : jvm::JvmExecuter(loader, spa
 JvmJit::~JvmJit() { }
 
 void JvmJit::initiateClass(ClassFile* cf) {
-
+	// FIXME : Execute this in new Threads
+	int16_t index = cf->getCompatibleMethodIndex("<clinit>", "()V");
+	if (index >= 0 && index < cf->methods_count)
+		JvmExecuter::execute(cf, "<clinit>", "()V", this, [](JvmExecuter* exec, void * addr) {
+			void(*mm)() = (void(*)())addr;
+			mm();
+		});
 }
 
 void* JvmJit::compile(ClassFile* cf, MethodInfo* method){

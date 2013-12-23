@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <mutex>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -12,39 +13,40 @@
 using namespace std;
 
 class ClassLoader {
-		static ClassLoader* ms_instance;
+private:
+	static ClassLoader* ms_instance;
 
-	public:
-		static ClassLoader* Instance();
-		static void Release();
+	std::mutex cf_mutex;
 
-		void AddPath(const char* path);
+public:
+	static ClassLoader* Instance();
+	static void Release();
 
-		ClassFile* getClass(const char* className);
+	void AddPath(const char* path);
 
-		ClassFile* getParentClass(ClassFile* cf);
+	ClassFile* getClass(const char* className);
+	ClassFile* getParentClass(ClassFile* cf);
 
-		bool IsPackage(const char* name);
+	bool IsPackage(const char* name);
 
-		bool Exists(string name);
+	bool Exists(string name);
 
-		bool IsSubclass(string subclass, string superclass);
+	bool IsSubclass(string subclass, string superclass);
 
-		void AddClass(string name, ClassFile* cf);
+	void AddClass(string name, ClassFile* cf);
 
-		bool AreCompatibleTypes(string dst, string src);
+	bool AreCompatibleTypes(string dst, string src);
 
-		bool AreCompatibleMethods(string formalParameters, string currentParameters);
+	bool AreCompatibleMethods(string formalParameters, string currentParameters);
 
-	private:
+private:
+	vector<string> _paths;
+	map<string, ClassFile*> _cf;
 
-		vector<string> _paths;
-		map<string, ClassFile*> _cf;
+	bool _innerExists(string s);
 
-		bool _innerExists(string s);
-
-		ClassLoader();
-		virtual ~ClassLoader();
+	ClassLoader();
+	virtual ~ClassLoader();
 
 };
 

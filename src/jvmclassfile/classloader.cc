@@ -7,6 +7,7 @@ ClassLoader::ClassLoader() {
 }
 
 ClassLoader::~ClassLoader() {
+	std::unique_lock<std::mutex> lock(cf_mutex);
 	for (map<string, ClassFile*>::iterator it = _cf.begin(); it != _cf.end(); it++) {
 		delete it->second;
 	}
@@ -27,16 +28,21 @@ void ClassLoader::Release() {
 }
 
 ClassFile* ClassLoader::getClass(const char* className) {
-	if (_cf.find(className) == _cf.end()) {
+	// FIXME: Decrease the time spent in critical section
 
+	// Observe that this operation does not compile
+	std::unique_lock<std::mutex> lock(cf_mutex);
+	if (_cf.find(className) == _cf.end()) {
+		// Ok, If we are here it is because the class has not been loaded, so let's do it
 		for (unsigned i = 0; i < _paths.size(); i++) {
 			string path = _paths[i] + className;
 			if (_innerExists(path + ".class")) {
-				_cf[className] = new ClassFile(path.c_str());
-				return _cf[className];
+				ClassFile* tmp = new ClassFile(path.c_str());
+				_cf[className] = tmp;
+				return tmp;
 			}
 		}
-		return 0;
+		return nullptr;
 	}
 	return _cf[className];
 }
@@ -50,7 +56,7 @@ void ClassLoader::AddPath(const char* path) {
 
 ClassFile* ClassLoader::getParentClass(ClassFile* cf) {
 	if (cf->getClassName() == string("java/lang/Object"))
-		return 0;
+		return nullptr;
 	int16_t parent = cf->super_class;
 
 	CONSTANT_Class_info* a = (CONSTANT_Class_info*) cf->info[parent - 1];
@@ -83,6 +89,7 @@ bool ClassLoader::Exists(string name) {
 }
 
 void ClassLoader::AddClass(string name, ClassFile* cf) {
+	std::unique_lock<std::mutex> lock(cf_mutex);
 	_cf[name] = cf;
 }
 
