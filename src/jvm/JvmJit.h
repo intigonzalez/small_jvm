@@ -63,7 +63,7 @@ public:
 	void* getAddrFromCompilationJobId(int id);
 	void* getAddrFromLoadingJob(LoadingAndCompile* job);
 
-	ClassFile* getInitiatedClass(std::string class_name);
+	void* getStaticFieldAddress(std::string& class_name, std::string& fieldName);
 
 	static JvmJit* instance();
 };

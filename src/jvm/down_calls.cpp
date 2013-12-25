@@ -4,6 +4,7 @@
 
 #include "down_calls.h"
 #include "JvmJit.h"
+#include "../jvmclassfile/JVMSpecUtils.h"
 
 std::map<std::string, Type*> rawTypes;
 
@@ -49,4 +50,17 @@ void* getAddressForLoadedMethod(int id)
 void* highlevel_loadClassCompileMethodAndPath(void* job)
 {
 	return jvm::JvmJit::instance()->getAddrFromLoadingJob((jvm::LoadingAndCompile*)job);
+}
+
+void* getStaticFieldAddress(ClassFile* clazzFile, int idxField)
+{
+	std::string clazzName = JVMSpecUtils::
+			getClassNameFromFieldRef(clazzFile, idxField);
+	std::string fieldName = JVMSpecUtils::
+				getFieldNameFromFieldRef(clazzFile, idxField);
+//	std::string fieldDescription = JVMSpecUtils::
+//				getFieldDescriptionFromFieldRef(clazzFile, idxField);
+	jvm::JvmJit::instance()->loadAndInit(clazzName);
+
+	return jvm::JvmJit::instance()->getStaticFieldAddress(clazzName, fieldName);
 }

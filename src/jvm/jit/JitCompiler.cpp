@@ -304,19 +304,19 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 							CALL_STATIC,
 							jit_address(tmp->address),
 							useless_value, Integer));
-				} else if (tmp) {
-					// TODO: the class is loaded but the method is not compiled
-					// generate stub method to:
-					// 1 - Compile the method
-					// 2 - Fix the wrong pointer
-					// 3 - Call the method
-					a = jvm::JvmJit::instance()->addCompilationJob(cf, tmp);
-					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
-					values.push(procedure.jit_regular_operation(
-							CALL_STATIC,
-							useless_value,
-							jit_constant(a),
-							Integer));
+//				} else if (tmp) {
+//					// TODO: the class is loaded but the method is not compiled
+//					// generate stub method to:
+//					// 1 - Compile the method
+//					// 2 - Fix the wrong pointer
+//					// 3 - Call the method
+//					a = jvm::JvmJit::instance()->addCompilationJob(cf, tmp);
+//					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
+//					values.push(procedure.jit_regular_operation(
+//							CALL_STATIC,
+//							useless_value,
+//							jit_constant(a),
+//							Integer));
 				} else {
 					// TODO: the class is not loaded, generate stub method to:
 					// 1 - Load the class
@@ -407,13 +407,25 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					fieldAccess(cf, i2);
 //					index += 3;
 //					break;
-//				case putstatic:
-//					branch1 = (unsigned char) code->code[index + 1];
-//					branch2 = (unsigned char)code->code[index + 2];
-//					i2 = (branch1 << 8) | branch2;
-//					fieldStaticAccess(cf, i2);
-//					index += 3;
-//					break;
+			case putstatic:
+
+				branch1 = (unsigned char) code->code[index + 1];
+				branch2 = (unsigned char)code->code[index + 2];
+				i2 = (branch1 << 8) | branch2;
+				v1 = procedure.jit_regular_operation(
+						GET_STATIC_FIELD_ADDR,
+						jit_address(cf),
+						jit_constant(i2),
+						Integer);
+				// FIXME, the same ugly assumption regarding member's type, Why Integer???
+				v = values.top(); values.pop();
+				procedure.jit_regular_operation(
+						MOV_TO_ADDR,
+						v1,
+						v,
+						useless_value);
+				index += 3;
+				break;
 //				case getfield:
 //					branch1 = (unsigned char) code->code[index + 1];
 //					branch2 = (unsigned char)code->code[index + 2];
@@ -421,13 +433,24 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					fieldAccess(cf, i2, false);
 //					index += 3;
 //					break;
-//				case getstatic:
-//					branch1 = (unsigned char) code->code[index + 1];
-//					branch2 = (unsigned char)code->code[index + 2];
-//					i2 = (branch1 << 8) | branch2;
-//					fieldStaticAccess(cf, i2, false);
-//					index += 3;
-//					break;
+			case getstatic:
+				branch1 = (unsigned char) code->code[index + 1];
+				branch2 = (unsigned char)code->code[index + 2];
+				i2 = (branch1 << 8) | branch2;
+				v1 = procedure.jit_regular_operation(
+						GET_STATIC_FIELD_ADDR,
+						jit_address(cf),
+						jit_constant(i2),
+						Integer);
+				// FIXME, the same ugly assumption regarding member's type, Why Integer???
+				v2 = procedure.jit_regular_operation(
+						MOV_FROM_ADDR,
+						v1,
+						useless_value,
+						Integer);
+				values.push(v2);
+				index += 3;
+				break;
 			case ldc:
 				i2 = (unsigned char)code->code[index + 1];
 				values.push(getConstant(cf, i2, code));

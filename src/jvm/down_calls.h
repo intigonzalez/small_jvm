@@ -33,6 +33,11 @@ void* getAddressForLoadedMethod(int id);
 void* highlevel_loadClassCompileMethodAndPath(void* job);
 
 /**
+ * Get the address of any static field referenced by idxField within clazzFile
+ */
+void* getStaticFieldAddress(ClassFile* clazzFile, int idxField);
+
+/**
  * This pseudo-function modifies the calling context to fix the target address of a previously non-compiled method.
  * Long Explanation: A method is compiled the first time it is called; hence it is possible to compile a caller before
  * having the actual address of the callee. We create an stub method to solve the problem. Such a method in charge of:
@@ -61,7 +66,38 @@ void* highlevel_loadClassCompileMethodAndPath(void* job);
  */
 void getMethodAddressAndPatch(); // this is not a function, in fact, it is a routine in assembly
 
-
+/**
+ * This pseudo-function modifies the calling context to fix the target address of a previously
+ * non-initiated class and method.
+ * Long Explanation: A class is initiated the first time it is used and a method is compiled the
+ * first time it is called; hence it is possible to compile a caller before having the actual
+ * address of the callee. We create an stub method to solve the problem. Such a method in charge of:
+ * 1 - 	Load the class from disk
+ * 2 - 	Preload the class and metaclass in memory. Execute the class constructor (cinit) to initialize
+ *	the class
+ * 3 - 	Compile the method
+ * 4 - 	Return the address
+ * 5 - 	Fix the previous call to reflect the new address, this means that the stub won't be called again
+ * 6 - 	jmp to the address
+ *
+ * @return - It acts as if a call to the real function has been performed.
+ * Note: This function is not intended to be called from the source code. Instead, it should be called from Jitted Code.
+ *
+ * When this pseudo-function is called it expect that a code as the one shown below has been executed (Intel Syntax):
+ *
+ * push arg_n
+ * ...
+ * push arg_1
+ * mov ecx, StubAddress
+ * call ecx
+ * add esp, n*4
+ * ...
+ * StubAddress:
+ * push LoadingJob
+ * jmp loadClassCompileMethodAndPath
+ * ...
+ * loadClassCompileMethodAndPath:
+ */
 void loadClassCompileMethodAndPath();
 #ifdef __cplusplus
 }

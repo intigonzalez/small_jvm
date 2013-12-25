@@ -63,6 +63,14 @@ int main(int argc, char* argv[])
 		std::exit(1);
 	}
 
+	int result;
+	JvmExecuter::execute(cf,"testingGetField","()I",(JvmJit*)exec, [&result] (JvmExecuter* exec, void * addr) {
+		int(*a)() = (int(*)())addr;
+		int r = a();
+		result = r;
+	});
+	cout << "testingGetField() = " << result << endl;
+
 	JvmExecuter::execute(cf,"main","([Ljava/lang/String;)V",(JvmJit*)exec, [] (JvmExecuter* exec, void * addr) {
 		void(*a)(Objeto) = (void(*)(Objeto))addr;
 		a(nullptr);
@@ -73,40 +81,32 @@ int main(int argc, char* argv[])
 		a(nullptr);
 	});
 
-	for (int i = 0 ; i < 1 ; i++) {
-		int result;
-		JvmExecuter::execute(cf,"accessingArray","(I[I)I",(JvmJit*)exec, [&result] (JvmExecuter* exec, void * addr) {
-			Objeto array = newRawArray(T_INT, 20);
-			int value1 = 1;
-			int value2 = 2;
-			ObjectHandler::instance()->assignArrayElement(array, 0 , &value1);
-			ObjectHandler::instance()->assignArrayElement(array, 1 , &value2);
-			int(*a)(int, Objeto) = (int(*)(int,Objeto))addr;
-			int r = a(1,array);
-			result = r;
-		});
+	JvmExecuter::execute(cf,"accessingArray","(I[I)I",(JvmJit*)exec, [&result] (JvmExecuter* exec, void * addr) {
+		Objeto array = newRawArray(T_INT, 20);
+		int value1 = 1;
+		int value2 = 2;
+		ObjectHandler::instance()->assignArrayElement(array, 0 , &value1);
+		ObjectHandler::instance()->assignArrayElement(array, 1 , &value2);
+		int(*a)(int, Objeto) = (int(*)(int,Objeto))addr;
+		int r = a(1,array);
+		result = r;
+	});
+	cout << "Results : " << result << endl;
 
-		cout << "Results : " << result << endl;
-	}
-
-	int result1;
 	int n = 6;
-	JvmExecuter::execute(cf,"factorial","(I)I",(JvmJit*)exec, [&result1,n] (JvmExecuter* exec, void * addr) {
+	JvmExecuter::execute(cf,"factorial","(I)I",(JvmJit*)exec, [&result,n] (JvmExecuter* exec, void * addr) {
 		int(*a)(int) = (int(*)(int))addr;
 		int r = a(n); // for some crazy reason I cannot assign result = a(n)
-		result1 = r;
+		result = r;
 	});
+	cout << "factorial(" << n << ") = " << result << endl;
 
-	cout << "factorial(" << n << ") = " << result1 << endl;
-
-	JvmExecuter::execute(cf,"anotherTest","()I",(JvmJit*)exec, [&result1] (JvmExecuter* exec, void * addr) {
+	JvmExecuter::execute(cf,"anotherTest","()I",(JvmJit*)exec, [&result] (JvmExecuter* exec, void * addr) {
 		int(*a)() = (int(*)())addr;
 		int r = a(); // for some crazy reason I cannot assign result = a(n)
-		result1 = r;
+		result = r;
 	});
-
-
-	cout << "anotherTest() = " << result1 << endl;
+	cout << "anotherTest() = " << result << endl;
 
 	ClassLoader::Release();
 	return 0;

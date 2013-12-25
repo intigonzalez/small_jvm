@@ -1,4 +1,5 @@
 public class Uno {
+	
 	static class Cuadrado {
 		static int color = 3;
 		static  {
@@ -14,6 +15,8 @@ public class Uno {
 			return a*a; 		
 		}
 	}
+
+	static int numberCrazy = 999;
 
 	public static void main(String[] a) {
 		/*if (a instanceof String[])
@@ -145,15 +148,21 @@ public class Uno {
 		return a[0] + a[1] + a[i];
 	}
 
+	public static int testingGetField() {
+		return Uno.numberCrazy + TmpClass.number;
+	}
+
 	public static int factorial(int a) {
 		if (a == 0) return 1;
 		return a * factorial(a - 1);	
 	}
 
 	static class TmpClass {
+		static int number=666; 
 		static int method() {
 			return 456787;
 		}
+
 	}
 
 	public static int anotherTest() {

@@ -26,6 +26,10 @@ public:
 	static std::string getClassNameFromMethodRef(ClassFile* clazz, int ref);
 	static std::string getMethodNameFromMethodRef(ClassFile* clazz, int ref);
 	static std::string getMethodDescriptionFromMethodRef(ClassFile* clazz, int ref);
+
+	static std::string getClassNameFromFieldRef(ClassFile* clazz, int ref);
+	static std::string getFieldNameFromFieldRef(ClassFile* clazz, int ref);
+	static std::string getFieldDescriptionFromFieldRef(ClassFile* clazz, int ref);
 };
 
 

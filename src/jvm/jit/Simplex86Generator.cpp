@@ -400,6 +400,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			// FIXME: other cases
 			break;
 		case CALL_STATIC:
+			// FIXME, take into account the return type
 			registers[0]->freeRegister(functor);
 			registers[2]->freeRegister(functor);
 			registers[3]->freeRegister(functor);
@@ -425,6 +426,41 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			v = variables.get(res);
 			v->setRegisterLocation(reg);
 			reg->setSingleReference(v);
+			break;
+		case GET_STATIC_FIELD_ADDR:
+			// FIXME, take into account the return type. Why, Integer?
+			// FIXME: I don't like this style at all. It is like generating
+			// an interpreter. There is not room for optimizations
+			// NOTE: I am doing a big assumption here. The function
+			// getStaticFieldAddress return the address of the field and
+			// this may fail if the GC is called between getStaticFieldAddress and
+			// the instruction in charge of getting the actual value
+			functor.S() << "push dword " << getData(op2, variables) << '\n';
+			functor.S() << "push dword " << getData(op1, variables) << '\n';
+			registers[0]->freeRegister(functor);
+			registers[2]->freeRegister(functor);
+			registers[3]->freeRegister(functor);
+			pointer = (void*)&getStaticFieldAddress;
+			functor.S() << "call dword " << pointer << '\n';
+			functor.S() << "add esp, 8\n";
+			reg = registers[0];
+			v = variables.get(res);
+			v->setRegisterLocation(reg);
+			reg->setSingleReference(v);
+			break;
+		case MOV_FROM_ADDR:
+			reg1 = getRegister(op1, variables); // the address
+			reg = getRegister(res,variables); // the result will be here
+			v = variables.get(res);
+			functor.S() << "mov " <<  reg->name << ",[" << reg1->name << "]\n";
+			v->setRegisterLocation(reg);
+			reg->setSingleReference(v);
+			break;
+		case MOV_TO_ADDR:
+			reg1 = getRegister(op1, variables); // the address to dereference
+			reg = getRegister(op2, variables);
+//			reg = getRegister(res,variables); // the result will be here
+			functor.S() << "mov dword [" <<  reg1->name << "]," << reg->name << "\n";
 			break;
 		case NEW_ARRAY:
 			// op2 has the size of the array
