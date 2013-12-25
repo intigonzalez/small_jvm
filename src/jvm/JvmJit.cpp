@@ -105,7 +105,9 @@ void* JvmJit::getAddrFromLoadingJob(LoadingAndCompile* job)
 			getMethodDescriptionFromMethodRef(job->callerClass,
 					job->methodRef);
 
-	// FIXME: find a way to remove job from memory
+	// FIXME: find a way to remove job from memory,
+	// remember that this is har to do because many threads can execute the same code at the same time
+	// and they can be using the reference while one thread is removing the reference
 	// delete job
 
 	ClassFile* calleeClazz = loadAndInit(className);
@@ -116,6 +118,16 @@ void* JvmJit::getAddrFromLoadingJob(LoadingAndCompile* job)
 		return compile(calleeClazz, m);
 	}
 	throw new runtime_error("Trying to compile an non-existent method");
+}
+
+ClassFile* JvmJit::getInitiatedClass(std::string class_name)
+{
+	// FIXME : Synchronize
+	if (classes.find(class_name)!=classes.end()) {
+		std::unique_lock<std::mutex> lock(mutex_jobs);
+		return loader->getClass(class_name.c_str());
+	}
+	return nullptr;
 }
 
 JvmJit* JvmJit::instance()

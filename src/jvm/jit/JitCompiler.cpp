@@ -318,7 +318,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 							jit_constant(a),
 							Integer));
 				} else {
-					cout << "Case I am looking for\n";
 					// TODO: the class is not loaded, generate stub method to:
 					// 1 - Load the class
 					// 2 - Fix the wrong pointer
@@ -503,30 +502,24 @@ jit_value JitCompiler::getConstant(ClassFile* cf, int16_t index, CodeAttribute* 
 
 MethodInfo* JitCompiler::getMethodToCall(ClassFile* cf, int16_t idx)
 {
-	// FIXME, lots of cases need solution
-	Constant_Info * cii = cf->info[idx- 1];
-	CONSTANT_Methodref_info* ci = (CONSTANT_Methodref_info*)(cii);
-	int16_t class_i = ci->class_index;
-	int16_t name_type = ci->name_and_type_index;
-	CONSTANT_NameAndType_info* name = (CONSTANT_NameAndType_info*)(cf->info[name_type - 1]);
-	if (class_i == cf->this_class) {
-		// this class
-		std::cout << "Well, Calling static method in the same class" << endl;
-		string method_name = cf->getUTF(name->name_index);
-		string method_description = cf->getUTF(name->descriptor_index);
-		int16_t method_index = cf->getCompatibleMethodIndex(method_name.c_str(),
-						method_description.c_str());
-		MethodInfo* mi = cf->methods[method_index];
-		return mi;
-	}
-	else {
-		CONSTANT_Class_info* clase = (CONSTANT_Class_info*)(cf->info[class_i - 1]);
+	std::string className = JVMSpecUtils::
+			getClassNameFromMethodRef(cf, idx);
 
-		string class_name = cf->getUTF(clase->name_index);
-		string method_name = cf->getUTF(name->name_index);
-		string method_description = cf->getUTF(name->descriptor_index);
-		return nullptr;
+	ClassFile* otherClazz = jvm::JvmJit::instance()->getInitiatedClass(className);
+
+	if (!otherClazz) return nullptr;
+
+	std::string methodName = JVMSpecUtils::
+			getMethodNameFromMethodRef(cf, idx);
+	std::string methodDescription = JVMSpecUtils::
+			getMethodDescriptionFromMethodRef(cf, idx);
+
+	int16_t index = otherClazz->getCompatibleMethodIndex(methodName.c_str(),
+					methodDescription.c_str());
+	if (index >= 0 && index < otherClazz->methods_count) {
+		return otherClazz->methods[index];
 	}
+	else throw new runtime_error("Trying to compile an non-existent method");
 }
 
 } /* namespace jit */
