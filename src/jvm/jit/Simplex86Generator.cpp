@@ -418,7 +418,8 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 				functor.S() << "call ecx\n";
 				stubs2.push_back((void*)op2.value);
 			}
-			functor.S() << "add esp, " << nbParameters*4 << '\n'; // FIXME, number of parameters
+			if (nbParameters > 0)
+				functor.S() << "add esp, " << nbParameters*4 << '\n'; // FIXME, number of parameters
 			nbParameters = 0;
 			reg = registers[0];
 			v = variables.get(res);
