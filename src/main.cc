@@ -56,7 +56,9 @@ int main(int argc, char* argv[])
 	
 	JvmExecuter* exec = JvmJit::instance(); //new JvmJit(ClassLoader::Instance(), Space::instance());
 
-	ClassFile* cf = exec->loadAndInit(argv[optind]);// ClassLoader::Instance()->getClass(argv[optind]);
+	string main_class(argv[optind]);
+
+	ClassFile* cf = exec->loadAndInit(main_class);// ClassLoader::Instance()->getClass(argv[optind]);
 
 	if (cf == nullptr) {
 		cerr << "Wrong class file: " << argv[optind] << '\n';
@@ -107,6 +109,20 @@ int main(int argc, char* argv[])
 		result = r;
 	});
 	cout << "anotherTest() = " << result << endl;
+
+	JvmExecuter::execute(cf,"testingNew","()I",(JvmJit*)exec, [&result] (JvmExecuter* exec, void * addr) {
+		int(*a)() = (int(*)())addr;
+		int r = a(); // for some crazy reason I cannot assign result = a(n)
+		result = r;
+	});
+	cout << "testingNew() = " << result << endl;
+
+	JvmExecuter::execute(cf,"testingNew2","()I",(JvmJit*)exec, [&result] (JvmExecuter* exec, void * addr) {
+		int(*a)() = (int(*)())addr;
+		int r = a(); // for some crazy reason I cannot assign result = a(n)
+		result = r;
+	});
+	cout << "testingNew2() = " << result << endl;
 
 	ClassLoader::Release();
 	return 0;

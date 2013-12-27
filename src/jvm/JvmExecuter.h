@@ -58,7 +58,7 @@ public:
 	 * 5 - Execute class initializers
 	 * 6 - Return the class-file ready to be used
 	 */
-	ClassFile* loadAndInit(string class_name);
+	ClassFile* loadAndInit(string& class_name);
 
 	virtual void execute(ClassFile* cf, MethodInfo* method, std::function<void(JvmExecuter*, void* addr)> fn) = 0;
 
@@ -75,15 +75,17 @@ public:
 		else throw new exception(/*"Executing non-static method as static"*/);
 	}
 
-	static int countParameters(string s);
+//	static int countParameters(string s);
 
 	Type* getType(string javaDescription);
 	Type* buildInMemoryClass(ClassFile* cf); // fixme : This should be private and thread safe
 
 	void callStaticNativeMethod(string signature, Clase* clazz);
 
-	// nullptr is the class i not loaded
+	// nullptr is the class is not loaded
 	ClassFile* getInitiatedClass(std::string& class_name);
+	// nullptr if the class is not loaded and initialized
+	Clase* getClassType(std::string& class_name);
 };
 
 } /* namespace jvm */

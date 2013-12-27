@@ -8,7 +8,7 @@
 #include "JVMSpecUtils.h"
 
 
-int JVMSpecUtils::countOfParameter(std::string s) {
+int JVMSpecUtils::countOfParameter(std::string& s) {
 	size_t pos = 1;
 	int count = 0;
 	while (s[pos] != ')') {
@@ -98,4 +98,11 @@ std::string JVMSpecUtils::getFieldDescriptionFromFieldRef(ClassFile* clazz,
 	int16_t name_type = ci->name_and_type_index;
 	CONSTANT_NameAndType_info* name = (CONSTANT_NameAndType_info*)(clazz->info[name_type - 1]);
 	return clazz->getUTF(name->descriptor_index);
+}
+
+std::string JVMSpecUtils::getClassNameFromClassRef(ClassFile* clazz, int ref)
+{
+	Constant_Info * cii = clazz->info[ref- 1];
+	CONSTANT_Class_info* ci = (CONSTANT_Class_info*)(cii);
+	return clazz->getUTF(ci->name_index);
 }

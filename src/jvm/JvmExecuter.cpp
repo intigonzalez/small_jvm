@@ -37,7 +37,7 @@ JvmExecuter::~JvmExecuter()
 
 }
 
-ClassFile* JvmExecuter::loadAndInit(string class_name)
+ClassFile* JvmExecuter::loadAndInit(string& class_name)
 {
 	// this operation is not affected by the garbage collector
 	ClassFile* cf = loader->getClass(class_name.c_str());
@@ -70,6 +70,16 @@ ClassFile* JvmExecuter::getInitiatedClass(std::string& class_name)
 	// FIXME : Synchronize
 	if (classes.find(class_name) != classes.end()) {
 		return loader->getClass(class_name.c_str());
+	}
+	return nullptr;
+}
+
+Clase* JvmExecuter::getClassType(std::string& class_name)
+{
+	// FIXME : Synchronize
+	if (classes.find(class_name) != classes.end()) {
+		// fixme: ensure that the type is a Class and not something else
+		return (Clase*)classes[class_name];
 	}
 	return nullptr;
 }
@@ -109,7 +119,6 @@ Type* JvmExecuter::getType(string javaDescription)
 
 Type* JvmExecuter::buildInMemoryClass(ClassFile* cf)
 {
-
 	string cname = cf->getClassName();
 	if (classes.find(cname) != classes.end())
 		return classes[cname];

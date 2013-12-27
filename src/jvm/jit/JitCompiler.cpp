@@ -52,8 +52,11 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 	int count;
 	MethodInfo* tmp;
 
-	int argumentsCount = JVMSpecUtils::countOfParameter(cf->getUTF(method->descriptor_index));
+
+	std::string currentMethodDescriptor = cf->getUTF(method->descriptor_index);
+	int argumentsCount = JVMSpecUtils::countOfParameter(currentMethodDescriptor);
 	jit::Routine procedure(argumentsCount);
+
 //	long long l;
 	OP_QUAD oper;
 	//AttributeInfo* ai = method->attributes[0];
@@ -296,6 +299,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					values.pop();
 					count--;
 				}
+				// TODO: Check if the error (inexistent method) is triggered at execution or compilation time.
 				tmp = getMethodToCall(cf, i2);
 				if (tmp && tmp->address) {
 					// the method is compiled
@@ -304,19 +308,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 							CALL_STATIC,
 							jit_address(tmp->address),
 							useless_value, Integer));
-//				} else if (tmp) {
-//					// TODO: the class is loaded but the method is not compiled
-//					// generate stub method to:
-//					// 1 - Compile the method
-//					// 2 - Fix the wrong pointer
-//					// 3 - Call the method
-//					a = jvm::JvmJit::instance()->addCompilationJob(cf, tmp);
-//					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
-//					values.push(procedure.jit_regular_operation(
-//							CALL_STATIC,
-//							useless_value,
-//							jit_constant(a),
-//							Integer));
 				} else {
 					// TODO: the class is not loaded, generate stub method to:
 					// 1 - Load the class
@@ -337,20 +328,86 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					values.push(jit_constant(123));
 				index += 3;
 				break;
-//				case invokespecial:
-//					branch1 = (unsigned char) code->code[index + 1];
-//					branch2 = (unsigned char)code->code[index + 2];
-//					i2 = (branch1 << 8) | branch2;
-//					invokeSpecial(cf, i2, code);
-//					index += 3;
-//					break;
-//				case invokevirtual: // FIXME like the other for now, this is wrong
-//					branch1 = (unsigned char) code->code[index + 1];
-//					branch2 = (unsigned char)code->code[index + 2];
-//					i2 = (branch1 << 8) | branch2;
-//					invokeSpecial(cf, i2, code);
-//					index += 3;
-//					break;
+			case invokespecial:
+				branch1 = (unsigned char) code->code[index + 1];
+				branch2 = (unsigned char)code->code[index + 2];
+				i2 = (branch1 << 8) | branch2;
+				// push all the parameters
+				count = JVMSpecUtils::countOfParameter(cf, i2) + 1; // +1 because of this
+				while (count) {
+					procedure.jit_regular_operation(PUSH_ARG, values.top(), useless_value, useless_value);
+					values.pop();
+					count--;
+				}
+				// TODO: Check if the error (inexistent method) is triggered at execution or compilation time.
+				tmp = getMethodToCall(cf, i2);
+				if (tmp && tmp->address) {
+					// the method is compiled
+					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
+					procedure.jit_regular_operation(
+							CALL_STATIC,
+							jit_address(tmp->address),
+							useless_value,
+							Integer);
+				} else {
+					// TODO: the class is not loaded, generate stub method to:
+					// 1 - Load the class
+					// 2 - Fix the wrong pointer
+					// 3 - Compile the method
+					// 4 - Fix the wrong pointer
+					// 5 - Call the method
+					jvm::LoadingAndCompile* task =
+							new jvm::LoadingAndCompile(cf, i2);
+					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
+					values.push(procedure.jit_regular_operation(
+							CALL_STATIC,
+							useless_value,
+							jit_address(task),
+							Integer));
+				}
+//				invokeSpecial(cf, i2, code);
+				index += 3;
+				break;
+			case invokevirtual: // FIXME like the other for now, this is wrong
+				branch1 = (unsigned char) code->code[index + 1];
+				branch2 = (unsigned char)code->code[index + 2];
+				i2 = (branch1 << 8) | branch2;
+				// push all the parameters
+				count = JVMSpecUtils::countOfParameter(cf, i2) + 1; // +1 because of this
+				while (count) {
+					procedure.jit_regular_operation(PUSH_ARG, values.top(), useless_value, useless_value);
+					values.pop();
+					count--;
+				}
+				// TODO: Check if the error (inexistent method) is triggered at execution or compilation time.
+				tmp = getMethodToCall(cf, i2);
+				if (tmp && tmp->address) {
+					// the method is compiled
+					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
+					values.push(procedure.jit_regular_operation(
+							CALL_STATIC,
+							jit_address(tmp->address),
+							useless_value,
+							Integer));
+				} else {
+					// TODO: the class is not loaded, generate stub method to:
+					// 1 - Load the class
+					// 2 - Fix the wrong pointer
+					// 3 - Compile the method
+					// 4 - Fix the wrong pointer
+					// 5 - Call the method
+					jvm::LoadingAndCompile* task =
+							new jvm::LoadingAndCompile(cf, i2);
+					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
+					values.push(procedure.jit_regular_operation(
+							CALL_STATIC,
+							useless_value,
+							jit_address(task),
+							Integer));
+				}
+//				invokeSpecial(cf, i2, code);
+				index += 3;
+				break;
 			case op_return:
 				procedure.jit_return_void();
 				index++;
@@ -363,13 +420,25 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				values.pop();
 				index++;
 				break;
-//				case op_new:
-//					branch1 = (unsigned char) code->code[index + 1];
-//					branch2 = (unsigned char)code->code[index + 2];
-//					i2 = (branch1 << 8) | branch2;
-//					createNewObject(cf, i2);
-//					index += 3;
-//					break;
+			case op_new:
+				branch1 = (unsigned char) code->code[index + 1];
+				branch2 = (unsigned char)code->code[index + 2];
+				i2 = (branch1 << 8) | branch2;
+
+
+				procedure.jit_regular_operation(PUSH_ARG,
+						jit_constant(i2));
+
+				procedure.jit_regular_operation(PUSH_ARG,
+						jit_address(cf));
+
+				values.push(procedure.jit_regular_operation(PLAIN_CALL,
+						jit_address((void*)&newObject),
+						jit_constant(2),
+						ObjRef));
+//				createNewObject(cf, i2);
+				index += 3;
+				break;
 			case op_newarray:
 				i2 = code->code[index + 1];
 				v = values.top(); values.pop(); // size of the array
@@ -400,13 +469,14 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				values.push(v1);
 				index++;
 				break;
-//				case putfield:
-//					branch1 = (unsigned char) code->code[index + 1];
-//					branch2 = (unsigned char) code->code[index + 2];
-//					i2 = (branch1 << 8) | branch2;nextIndex
-//					fieldAccess(cf, i2);
-//					index += 3;
-//					break;
+//			case putfield:
+//				branch1 = (unsigned char) code->code[index + 1];
+//				branch2 = (unsigned char) code->code[index + 2];
+//				i2 = (branch1 << 8) | branch2;nextIndex
+//				//
+//				fieldAccess(cf, i2);
+//				index += 3;
+//				break;
 			case putstatic:
 
 				branch1 = (unsigned char) code->code[index + 1];

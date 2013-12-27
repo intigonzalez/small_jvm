@@ -20,17 +20,17 @@
 
 namespace jit {
 enum value_scope {Constant, Local, Field, Temporal, Useless, Register, Label};
-enum value_type {Integer, Boolean, ObjRef,ArrRef};
+enum value_type {Integer, Boolean, ObjRef,ArrRef, Void};
 
 struct DataQuad {
-	value_type op1_type:2;
+	value_type op1_type:3;
 	value_scope op1_scope:3;
-	value_type op2_type:2;
+	value_type op2_type:3;
 	value_scope op2_scope:3;
-	value_type op3_type:2;
+	value_type op3_type:3;
 	value_scope op3_scope:3;
 	bool label:1;
-	OP_QUAD op:16;
+	OP_QUAD op:13;
 };
 
 struct jit_value {
@@ -110,7 +110,8 @@ struct Routine {
 	 * Used to emit regular quadruplos
 	 */
 	jit_value jit_regular_operation(OP_QUAD op, jit_value op1, jit_value op2, value_type result_type);
-	void jit_regular_operation(OP_QUAD op, jit_value op1, jit_value op2, jit_value resultRef);
+	void jit_regular_operation(OP_QUAD op, jit_value op1, jit_value op2 =
+	                useless_value, jit_value resultRef = useless_value);
 
 	/**
 	 * Methods

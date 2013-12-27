@@ -399,6 +399,18 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			}
 			// FIXME: other cases
 			break;
+		case PLAIN_CALL:
+			assert(op2.value == nbParameters);
+			// FIXME, take into account the return type
+			registers[0]->freeRegister(functor);
+			registers[2]->freeRegister(functor);
+			registers[3]->freeRegister(functor);
+			pointer = (void*)op1.value;
+			functor.S() << "call dword " << pointer << '\n';
+			if (op2.value > 0)
+				functor.S() << "add esp, " << op2.value*4 << '\n'; // FIXME, number of parameters
+			nbParameters = 0;
+			break;
 		case CALL_STATIC:
 			// FIXME, take into account the return type
 			registers[0]->freeRegister(functor);

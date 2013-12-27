@@ -19,6 +19,8 @@ void initDownCalls();
 Objeto newRawArray(RawArrayTypes type, int length);
 
 
+Objeto newObject(ClassFile* cf, int idx);
+
 
 #ifdef __cplusplus
 extern "C" {

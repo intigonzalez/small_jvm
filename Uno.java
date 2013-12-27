@@ -11,8 +11,16 @@ public class Uno {
 			a = n;	
 			color++;
 		}
+
+		Cuadrado() {
+		}
+
 		int area() {
 			return a*a; 		
+		}
+
+		int area2() {
+			return 12*12;
 		}
 	}
 
@@ -155,6 +163,16 @@ public class Uno {
 	public static int factorial(int a) {
 		if (a == 0) return 1;
 		return a * factorial(a - 1);	
+	}
+
+	public static int testingNew() {
+		Cuadrado c = new Cuadrado();
+		return c.area2();
+	}
+
+	public static int testingNew2() {
+		Cuadrado c = new Cuadrado();
+		return c.area2();
 	}
 
 	static class TmpClass {

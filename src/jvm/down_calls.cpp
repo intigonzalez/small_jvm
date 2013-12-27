@@ -42,6 +42,14 @@ Objeto newRawArray(RawArrayTypes type, int length)
 	return obj;
 }
 
+Objeto newObject(ClassFile* cf, int idx) {
+	std::string class_name = JVMSpecUtils::getClassNameFromClassRef(cf, idx);
+	// ensure that the class is loaded
+	jvm::JvmJit::instance()->loadAndInit(class_name);
+	Clase* clazz = jvm::JvmJit::instance()->getClassType(class_name);
+	return Space::instance()->newObject(clazz);
+}
+
 void* getAddressForLoadedMethod(int id)
 {
 	return jvm::JvmJit::instance()->getAddrFromCompilationJobId(id);
