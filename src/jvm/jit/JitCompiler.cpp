@@ -440,7 +440,20 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case op_newarray:
 				i2 = code->code[index + 1];
 				v = values.top(); values.pop(); // size of the array
-				values.push(procedure.jit_regular_operation(NEW_ARRAY, v, jit_constant(i2), ArrRef));
+
+				procedure.jit_regular_operation(PUSH_ARG,
+						v);
+
+				procedure.jit_regular_operation(PUSH_ARG,
+						jit_constant(i2));
+
+				values.push(procedure.jit_regular_operation(PLAIN_CALL,
+						jit_address((void*)&newRawArray),
+						jit_constant(2),
+						ArrRef));
+
+
+//				values.push(procedure.jit_regular_operation(NEW_ARRAY, v, jit_constant(i2), ArrRef));
 				//createNewRawArray(i2);
 				index += 2;
 				break;

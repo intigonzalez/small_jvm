@@ -457,22 +457,6 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 //			reg = getRegister(res,variables); // the result will be here
 			functor.S() << "mov dword [" <<  reg1->name << "]," << reg->name << "\n";
 			break;
-		case NEW_ARRAY:
-			// op2 has the size of the array
-			functor.S() << "push dword " << getData(op1, variables) << '\n';
-			functor.S() << "push dword " << getData(op2, variables) << '\n';
-			// in the Intel ABI x86 calling convention the callee is able to modified registers EAX, ECX, EDX. Hence the caller should save them
-			registers[0]->freeRegister(functor);
-			registers[2]->freeRegister(functor);
-			registers[3]->freeRegister(functor);
-			pointer = (void*)&newRawArray;
-			functor.S() << "call " << pointer << '\n';
-			functor.S() << "add esp, 8\n";
-			reg = registers[0];
-			v = variables.get(res);
-			v->setRegisterLocation(reg);
-			reg->setSingleReference(v);
-			break;
 		case OP_RETURN:
 			if (op1.meta.scope == Useless) {
 				// do nothing, or maybe something with used registers
