@@ -410,6 +410,10 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			if (op2.value > 0)
 				functor.S() << "add esp, " << op2.value*4 << '\n'; // FIXME, number of parameters
 			nbParameters = 0;
+			reg = registers[0];
+			v = variables.get(res);
+			v->setRegisterLocation(reg);
+			reg->setSingleReference(v);
 			break;
 		case CALL_STATIC:
 			// FIXME, take into account the return type
@@ -434,27 +438,6 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			if (nbParameters > 0)
 				functor.S() << "add esp, " << nbParameters*4 << '\n'; // FIXME, number of parameters
 			nbParameters = 0;
-			reg = registers[0];
-			v = variables.get(res);
-			v->setRegisterLocation(reg);
-			reg->setSingleReference(v);
-			break;
-		case GET_STATIC_FIELD_ADDR:
-			// FIXME, take into account the return type. Why, Integer?
-			// FIXME: I don't like this style at all. It is like generating
-			// an interpreter. There is not room for optimizations
-			// NOTE: I am doing a big assumption here. The function
-			// getStaticFieldAddress return the address of the field and
-			// this may fail if the GC is called between getStaticFieldAddress and
-			// the instruction in charge of getting the actual value
-			functor.S() << "push dword " << getData(op2, variables) << '\n';
-			functor.S() << "push dword " << getData(op1, variables) << '\n';
-			registers[0]->freeRegister(functor);
-			registers[2]->freeRegister(functor);
-			registers[3]->freeRegister(functor);
-			pointer = (void*)&getStaticFieldAddress;
-			functor.S() << "call dword " << pointer << '\n';
-			functor.S() << "add esp, 8\n";
 			reg = registers[0];
 			v = variables.get(res);
 			v->setRegisterLocation(reg);

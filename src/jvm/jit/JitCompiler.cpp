@@ -295,7 +295,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				// push all the parameters
 				count2 = count = JVMSpecUtils::countOfParameter(cf, i2);
 				while (count) {
-					procedure.jit_regular_operation(PUSH_ARG, values.top(), useless_value, useless_value);
+					procedure.jit_regular_operation(PUSH_ARG,
+							values.top());
 					values.pop();
 					count--;
 				}
@@ -335,7 +336,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				// push all the parameters
 				count2 = count = JVMSpecUtils::countOfParameter(cf, i2) + 1; // +1 because of this
 				while (count) {
-					procedure.jit_regular_operation(PUSH_ARG, values.top(), useless_value, useless_value);
+					procedure.jit_regular_operation(PUSH_ARG,
+							values.top());
 					values.pop();
 					count--;
 				}
@@ -365,17 +367,19 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 							jit_address(task),
 							Integer));
 				}
-//				invokeSpecial(cf, i2, code);
 				index += 3;
 				break;
-			case invokevirtual: // FIXME like the other for now, this is wrong
+			case invokevirtual:
+				// FIXME I am doing something wrong because the implementation is the same
+				// as invokespecial.
 				branch1 = (unsigned char) code->code[index + 1];
 				branch2 = (unsigned char)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 				// push all the parameters
 				count2 = count = JVMSpecUtils::countOfParameter(cf, i2) + 1; // +1 because of this
 				while (count) {
-					procedure.jit_regular_operation(PUSH_ARG, values.top(), useless_value, useless_value);
+					procedure.jit_regular_operation(PUSH_ARG,
+							values.top());
 					values.pop();
 					count--;
 				}
@@ -405,7 +409,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 							jit_address(task),
 							Integer));
 				}
-//				invokeSpecial(cf, i2, code);
 				index += 3;
 				break;
 			case op_return:
@@ -413,9 +416,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				index++;
 				break;
 			case ireturn:
-				//a = executionStack[--tStack];
-				//tStack = p2;
-				//executionStack[tStack++] = a;
 				procedure.jit_return_int(values.top());
 				values.pop();
 				index++;
@@ -435,7 +435,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 						jit_address((void*)&newObject),
 						jit_constant(2),
 						ObjRef));
-//				createNewObject(cf, i2);
 				index += 3;
 				break;
 			case op_newarray:
@@ -481,18 +480,28 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				branch1 = (unsigned char) code->code[index + 1];
 				branch2 = (unsigned char)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
-				v1 = procedure.jit_regular_operation(
-						GET_STATIC_FIELD_ADDR,
-						jit_address(cf),
-						jit_constant(i2),
+
+				procedure.jit_regular_operation(PUSH_ARG,
+						jit_constant(i2));
+
+				procedure.jit_regular_operation(PUSH_ARG,
+						jit_address(cf));
+
+				v1 = procedure.jit_regular_operation(PLAIN_CALL,
+						jit_address((void*)&getStaticFieldAddress),
+						jit_constant(2),
 						Integer);
+//
+//				v1 = procedure.jit_regular_operation(
+//						GET_STATIC_FIELD_ADDR,
+//						jit_address(cf),
+//						jit_constant(i2),
+//						Integer);
 				// FIXME, the same ugly assumption regarding member's type, Why Integer???
 				v = values.top(); values.pop();
 				procedure.jit_regular_operation(
 						MOV_TO_ADDR,
-						v1,
-						v,
-						useless_value);
+						v1, v);
 				index += 3;
 				break;
 //				case getfield:
@@ -506,11 +515,21 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				branch1 = (unsigned char) code->code[index + 1];
 				branch2 = (unsigned char)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
-				v1 = procedure.jit_regular_operation(
-						GET_STATIC_FIELD_ADDR,
-						jit_address(cf),
-						jit_constant(i2),
+				procedure.jit_regular_operation(PUSH_ARG,
+						jit_constant(i2));
+
+				procedure.jit_regular_operation(PUSH_ARG,
+						jit_address(cf));
+
+				v1 = procedure.jit_regular_operation(PLAIN_CALL,
+						jit_address((void*)&getStaticFieldAddress),
+						jit_constant(2),
 						Integer);
+//				v1 = procedure.jit_regular_operation(
+//						GET_STATIC_FIELD_ADDR,
+//						jit_address(cf),
+//						jit_constant(i2),
+//						Integer);
 				// FIXME, the same ugly assumption regarding member's type, Why Integer???
 				v2 = procedure.jit_regular_operation(
 						MOV_FROM_ADDR,
