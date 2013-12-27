@@ -206,6 +206,9 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 	operatorToInstruction[SUB] = "sub ";
 	operatorToInstruction[MUL] = "imul ";
 	int nbParameters = 0;
+	string tmpStr;
+	std::bitset<6> used;
+
 	for (unsigned i = 0; i < bb->q.size(); i++) {
 		if (bb->q[i].label != -1)
 			functor.S() << "LA" << bb->q[i].label << ":\n";
@@ -218,12 +221,15 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		x86Register* reg;
 		x86Register* reg1;
 		x86Register* reg2;
-		string tmpStr;
-		std::bitset<6> used;
 		int int_value;
 		void * pointer;
 
 		switch (ope) {
+		case CRAZY_OP:
+			reg = getRegister(op1, variables);
+			v = variables.get(res);
+			functor.S() << "mov " << v->toString() << "," << reg->name << '\n';
+			continue;
 		case ASSIGN:
 			if (op1.meta.scope == Constant) {
 				v = variables.get(res);
@@ -447,7 +453,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			used.reset();
 			reg1 = getRegister(op1, variables); // the address
 			used.set(reg1->id);
-			reg = getRegister(res,variables, used.to_ulong(), false); // the result will be here
+			reg = getRegister(res,variables, used.to_ulong(), true); // the result will be here
 			functor.S() << "mov " <<  reg->name << ",[" << reg1->name << "]\n";
 			v = variables.get(res);
 			v->setRegisterLocation(reg);
@@ -457,7 +463,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			used.reset();
 			reg1 = getRegister(op1, variables); // the address to dereference
 			used.set(reg1->id);
-			reg = getRegister(op2, variables, used.to_ulong(), false);
+			reg = getRegister(op2, variables, used.to_ulong(), true);
 //			reg = getRegister(res,variables); // the result will be here
 			functor.S() << "mov dword [" <<  reg1->name << "]," << reg->name << "\n";
 			break;

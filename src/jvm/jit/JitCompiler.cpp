@@ -51,10 +51,14 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 	int32_t i2;
 	int count, count2;
 	MethodInfo* tmp;
+	Clase* javaClass;
+	std::string sTmp;
 
 
 	std::string currentMethodDescriptor = cf->getUTF(method->descriptor_index);
 	int argumentsCount = JVMSpecUtils::countOfParameter(currentMethodDescriptor);
+	if ((method->access_flags & ACC_STATIC) == 0)
+		argumentsCount++;
 	jit::Routine procedure(argumentsCount);
 
 //	long long l;
@@ -347,7 +351,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					// the method is compiled
 					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
 					procedure.jit_regular_operation(
-							CALL_STATIC,
+							PLAIN_CALL,
 							jit_address(tmp->address),
 							jit_constant(count2),
 							Integer);
@@ -361,11 +365,11 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					jvm::LoadingAndCompile* task =
 							new jvm::LoadingAndCompile(cf, i2);
 					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
-					values.push(procedure.jit_regular_operation(
+					procedure.jit_regular_operation(
 							CALL_STATIC,
 							useless_value,
 							jit_address(task),
-							Integer));
+							Integer);
 				}
 				index += 3;
 				break;
@@ -389,7 +393,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					// the method is compiled
 					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
 					values.push(procedure.jit_regular_operation(
-							CALL_STATIC,
+							PLAIN_CALL,
 							jit_address(tmp->address),
 							jit_constant(count2),
 							Integer));
@@ -466,7 +470,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				break;
 			case op_dup:
 				v = values.top();
-				values.push(v);
+				values.push(procedure.jit_copy(v));
 //					type = topType();
 //					push(v, type);
 				index++;
@@ -476,18 +480,46 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				v1 = values.top(); values.pop();
 				v2 = values.top();
 				values.push(v1);
-				values.push(v2);
-				values.push(v1);
+				values.push(procedure.jit_copy(v2));
+				values.push(procedure.jit_copy(v1));
+//				values.push(v2);
+//				values.push(v1);
 				index++;
 				break;
-//			case putfield:
-//				branch1 = (unsigned char) code->code[index + 1];
-//				branch2 = (unsigned char) code->code[index + 2];
-//				i2 = (branch1 << 8) | branch2;nextIndex
-//				//
-//				fieldAccess(cf, i2);
-//				index += 3;
-//				break;
+			case putfield:
+				branch1 = (unsigned char) code->code[index + 1];
+				branch2 = (unsigned char) code->code[index + 2];
+				i2 = (branch1 << 8) | branch2;
+				v = values.top(); values.pop(); // value
+				v2 = values.top(); values.pop(); // object
+
+				// if the class is loaded and initialized then we can calculate the position of the field
+				sTmp = JVMSpecUtils::getClassNameFromFieldRef(cf, i2);
+				javaClass = jvm::JvmJit::instance()->getClassType(sTmp);
+				if (javaClass) {
+					sTmp = JVMSpecUtils::getFieldNameFromFieldRef(cf, i2);
+					count = javaClass->sizeUntil(sTmp) + BASE_OBJECT_SIZE;
+					v1 = jit_constant(count);
+				}
+				else {
+					procedure.jit_regular_operation(PUSH_ARG,
+							jit_constant(i2));
+
+					procedure.jit_regular_operation(PUSH_ARG,
+							jit_address(cf));
+
+					v1 = procedure.jit_regular_operation(PLAIN_CALL,
+							jit_address((void*)&getFieldDisplacement),
+							jit_constant(2), // two parameters
+							Integer);
+				}
+				v1 = procedure.jit_binary_operation(PLUS,
+						v2, v1); // field address
+
+				procedure.jit_regular_operation(MOV_TO_ADDR,
+						v1, v);
+				index += 3;
+				break;
 			case putstatic:
 
 				branch1 = (unsigned char) code->code[index + 1];
@@ -502,28 +534,55 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 
 				v1 = procedure.jit_regular_operation(PLAIN_CALL,
 						jit_address((void*)&getStaticFieldAddress),
-						jit_constant(2),
+						jit_constant(2), // two parameters
 						Integer);
-//
-//				v1 = procedure.jit_regular_operation(
-//						GET_STATIC_FIELD_ADDR,
-//						jit_address(cf),
-//						jit_constant(i2),
-//						Integer);
-				// FIXME, the same ugly assumption regarding member's type, Why Integer???
-				v = values.top(); values.pop();
+
+				v = values.top(); values.pop(); // value
 				procedure.jit_regular_operation(
 						MOV_TO_ADDR,
 						v1, v);
 				index += 3;
 				break;
-//				case getfield:
-//					branch1 = (unsigned char) code->code[index + 1];
-//					branch2 = (unsigned char)code->code[index + 2];
-//					i2 = (branch1 << 8) | branch2;
-//					fieldAccess(cf, i2, false);
-//					index += 3;
-//					break;
+			case getfield:
+				branch1 = (unsigned char) code->code[index + 1];
+				branch2 = (unsigned char)code->code[index + 2];
+				i2 = (branch1 << 8) | branch2;
+
+				v2 = values.top(); values.pop(); // object
+
+				// if the class is loaded and initialized then we can calculate the position of the field
+				sTmp = JVMSpecUtils::getClassNameFromFieldRef(cf, i2);
+				javaClass = jvm::JvmJit::instance()->getClassType(sTmp);
+				if (javaClass) {
+					sTmp = JVMSpecUtils::getFieldNameFromFieldRef(cf, i2);
+					count = javaClass->sizeUntil(sTmp) + BASE_OBJECT_SIZE;
+					v1 = jit_constant(count);
+				}
+				else {
+					procedure.jit_regular_operation(PUSH_ARG,
+							jit_constant(i2));
+
+					procedure.jit_regular_operation(PUSH_ARG,
+							jit_address(cf));
+
+					v1 = procedure.jit_regular_operation(PLAIN_CALL,
+							jit_address((void*)&getFieldDisplacement),
+							jit_constant(2), // two parameters
+							Integer);
+				}
+				v1 = procedure.jit_binary_operation(PLUS,
+						v2, v1); // field address
+
+				// FIXME, the same ugly assumption regarding member's type, Why Integer???
+				values.push(procedure.jit_regular_operation(
+						MOV_FROM_ADDR,
+						v1,
+						useless_value,
+						Integer));
+
+//				fieldAccess(cf, i2, false);
+				index += 3;
+				break;
 			case getstatic:
 				branch1 = (unsigned char) code->code[index + 1];
 				branch2 = (unsigned char)code->code[index + 2];

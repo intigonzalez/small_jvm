@@ -39,6 +39,12 @@ void* highlevel_loadClassCompileMethodAndPath(void* job);
  */
 void* getStaticFieldAddress(ClassFile* clazzFile, int idxField);
 
+
+/**
+ * Get the address of any field in any class referenced by idxField within clazzFile
+ */
+int getFieldDisplacement(ClassFile* clazzFile, int idxField);
+
 /**
  * This pseudo-function modifies the calling context to fix the target address of a previously non-compiled method.
  * Long Explanation: A method is compiled the first time it is called; hence it is possible to compile a caller before

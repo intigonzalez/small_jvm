@@ -167,6 +167,32 @@ void Routine::jit_assign_local(jit_value local, jit_value v)
 	q.push_back(result);
 }
 
+jit_value jit::Routine::jit_copy(jit_value v)
+{
+	Quadr r;
+	switch(v.meta.scope) {
+	case Constant:
+	case Useless:
+	case Label:
+	case Local:
+		return v;
+	case Temporal:
+		// Fuck, I need to copy to a new location in a crazy way
+		r.op1 = v;
+		r.op2 = useless_value;
+		r.op = CRAZY_OP;
+
+		r.res.meta.type = v.meta.type;
+		r.res.meta.scope = Temporal;
+		r.label = -1;
+		r.res.value = getTempId();
+		q.push_back(r);
+		return r.res;
+	default:
+		throw new runtime_error("Really? Is there some other kind of value");
+	}
+}
+
 void Routine::buildControlFlowGraph()
 {
 	map<int, vertex_t> map;
@@ -289,4 +315,3 @@ void Routine::print()
 }
 
 }
-

@@ -235,8 +235,8 @@ namespace MemoryManagement {
 
 	void* Space::explore(Objeto obj) {
 		char buff[16];
-		if (obj == NIL)
-			return NIL;
+		if (obj == nullptr)
+			return nullptr;
 
 		if (obj->forwardPointer != 0)
 			return obj->forwardPointer;

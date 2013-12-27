@@ -65,10 +65,23 @@ void* getStaticFieldAddress(ClassFile* clazzFile, int idxField)
 	std::string clazzName = JVMSpecUtils::
 			getClassNameFromFieldRef(clazzFile, idxField);
 	std::string fieldName = JVMSpecUtils::
-				getFieldNameFromFieldRef(clazzFile, idxField);
+			getFieldNameFromFieldRef(clazzFile, idxField);
 //	std::string fieldDescription = JVMSpecUtils::
 //				getFieldDescriptionFromFieldRef(clazzFile, idxField);
 	jvm::JvmJit::instance()->loadAndInit(clazzName);
 
 	return jvm::JvmJit::instance()->getStaticFieldAddress(clazzName, fieldName);
+}
+
+int getFieldDisplacement(ClassFile* clazzFile, int idxField)
+{
+	std::string clazzName = JVMSpecUtils::
+			getClassNameFromFieldRef(clazzFile, idxField);
+	std::string fieldName = JVMSpecUtils::
+			getFieldNameFromFieldRef(clazzFile, idxField);
+	Clase* clazz = jvm::JvmJit::instance()->getClassType(clazzName);
+	if (clazz)
+		return clazz->sizeUntil(fieldName) + BASE_OBJECT_SIZE;
+	else throw runtime_error("Trying to access a field from some already unload class, "
+			"that is impossible because NEW should be called first");
 }

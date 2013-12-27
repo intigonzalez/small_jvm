@@ -123,11 +123,13 @@ struct Routine {
 	 * Assignments
 	 */
 	void jit_assign_local(jit_value local, jit_value v);
+	jit_value jit_copy(jit_value v);
 
 	/**
 	 * Utils
 	 */
 	int getTempId();
+
 
 
 	void buildControlFlowGraph();

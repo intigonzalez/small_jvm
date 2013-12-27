@@ -9,7 +9,7 @@ public class Uno {
 		int a;
 		Cuadrado(int n) {
 			a = n;	
-			color++;
+			//color++;
 		}
 
 		Cuadrado() {
@@ -166,13 +166,13 @@ public class Uno {
 	}
 
 	public static int testingNew() {
-		Cuadrado c = new Cuadrado();
-		return c.area2();
+		Cuadrado c = new Cuadrado(12);
+		return c.area();
 	}
 
 	public static int testingNew2() {
-		Cuadrado c = new Cuadrado();
-		return c.area2();
+		Cuadrado c = new Cuadrado(13);
+		return c.area();
 	}
 
 	static class TmpClass {

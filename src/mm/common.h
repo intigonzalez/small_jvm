@@ -17,11 +17,9 @@ typedef struct {
 
 typedef _Objeto* Objeto;
 
-typedef unsigned int dword;
+const int BASE_OBJECT_SIZE = sizeof(_Objeto);
 
 }
-
-#define NIL	0
 
 
 #endif /* COMMON_H_ */

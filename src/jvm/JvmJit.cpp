@@ -62,6 +62,10 @@ void* JvmJit::compile(ClassFile* cf, MethodInfo* method)
 		addr = result.get();
 		method->address = addr;
 		method->cleanCode();
+
+		cout << "Method " << cf->getClassName() << ":"
+			                << cf->getUTF(method->name_index) << " compiled"
+			                << endl;
 	}
 	cout << "Method " << cf->getClassName() << ":"
 	                << cf->getUTF(method->name_index) << " is in address : "

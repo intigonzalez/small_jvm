@@ -29,18 +29,32 @@ namespace MemoryManagement {
 
 	void* ObjectHandler::getMemberAddress(MemoryManagement::Objeto object, std::string memberName) {
 		Clase* type = (Clase*) (object->clase);
-		dword size = type->sizeUntil(memberName);
+		int size = type->sizeUntil(memberName);
 		char* tmp = (char*) (object);
-		void* r = &tmp[sizeof(Clase*) + sizeof(MemoryManagement::Objeto) + size];
+		void* r = &tmp[BASE_OBJECT_SIZE + size];
 		return r;
 	}
 
 	void* ObjectHandler::getMemberAddress(MemoryManagement::Objeto object, int memberIndex) {
 		Clase* type = (Clase*) (object->clase);
-		dword size = type->sizeUntil(memberIndex);
+		int size = type->sizeUntil(memberIndex);
 		char* tmp = (char*) (object);
-		void* r = &tmp[sizeof(Clase*) + sizeof(MemoryManagement::Objeto) + size];
+		void* r = &tmp[BASE_OBJECT_SIZE + size];
 		return r;
+	}
+
+	int ObjectHandler::getMemberDisplacement(
+	                MemoryManagement::Objeto object, int memberIndex)
+	{
+		Clase* type = (Clase*) (object->clase);
+		return sizeof(MemoryManagement::_Objeto) + type->sizeUntil(memberIndex);
+	}
+
+	int ObjectHandler::getMemberDisplacement(
+	                MemoryManagement::Objeto object, std::string memberName)
+	{
+		Clase* type = (Clase*) (object->clase);
+		return BASE_OBJECT_SIZE + type->sizeUntil(memberName);
 	}
 
 	void ObjectHandler::assign(MemoryManagement::Objeto* dst, MemoryManagement::Objeto src) {
@@ -107,4 +121,3 @@ namespace MemoryManagement {
 /* namespace MemoryManagement */
 
 }
-

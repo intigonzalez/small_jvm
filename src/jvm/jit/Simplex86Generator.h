@@ -291,14 +291,13 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	file.close();
 	std::string output = file.getFilePath().substr(0, file.getFilePath().size() - 4) + ".bin";
 	std::string command = "nasm -f bin -o " + output + " " + file.getFilePath();
+	std::cout << command << " will execute" <<  std::endl;
 	int status = std::system(command.c_str());
 
 	int fd2 = open(output.c_str(), O_RDONLY);
 	buf = manager->getChunck(4096);
-	int leido = read(fd2, buf, 4096);
+	int readed = read(fd2, buf, 4096);
 	close(fd2);
-//	std::cout << "Leido : " <<  leido << " " << std::endl;
-	//std::cout << command << " " << buf <<  std::endl;
 
 	return buf;
 }
