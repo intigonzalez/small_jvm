@@ -49,7 +49,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 	int32_t branch1;
 	unsigned char branch2;
 	int32_t i2;
-	int count;
+	int count, count2;
 	MethodInfo* tmp;
 
 
@@ -293,7 +293,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				branch2 = (unsigned char) code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 				// push all the parameters
-				count = JVMSpecUtils::countOfParameter(cf, i2);
+				count2 = count = JVMSpecUtils::countOfParameter(cf, i2);
 				while (count) {
 					procedure.jit_regular_operation(PUSH_ARG, values.top(), useless_value, useless_value);
 					values.pop();
@@ -305,9 +305,9 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					// the method is compiled
 					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
 					values.push(procedure.jit_regular_operation(
-							CALL_STATIC,
+							PLAIN_CALL,
 							jit_address(tmp->address),
-							useless_value, Integer));
+							jit_constant(count2), Integer));
 				} else {
 					// TODO: the class is not loaded, generate stub method to:
 					// 1 - Load the class
@@ -333,7 +333,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				branch2 = (unsigned char)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 				// push all the parameters
-				count = JVMSpecUtils::countOfParameter(cf, i2) + 1; // +1 because of this
+				count2 = count = JVMSpecUtils::countOfParameter(cf, i2) + 1; // +1 because of this
 				while (count) {
 					procedure.jit_regular_operation(PUSH_ARG, values.top(), useless_value, useless_value);
 					values.pop();
@@ -347,7 +347,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					procedure.jit_regular_operation(
 							CALL_STATIC,
 							jit_address(tmp->address),
-							useless_value,
+							jit_constant(count2),
 							Integer);
 				} else {
 					// TODO: the class is not loaded, generate stub method to:
@@ -373,7 +373,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				branch2 = (unsigned char)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 				// push all the parameters
-				count = JVMSpecUtils::countOfParameter(cf, i2) + 1; // +1 because of this
+				count2 = count = JVMSpecUtils::countOfParameter(cf, i2) + 1; // +1 because of this
 				while (count) {
 					procedure.jit_regular_operation(PUSH_ARG, values.top(), useless_value, useless_value);
 					values.pop();
@@ -387,7 +387,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					values.push(procedure.jit_regular_operation(
 							CALL_STATIC,
 							jit_address(tmp->address),
-							useless_value,
+							jit_constant(count2),
 							Integer));
 				} else {
 					// TODO: the class is not loaded, generate stub method to:
@@ -424,7 +424,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				branch1 = (unsigned char) code->code[index + 1];
 				branch2 = (unsigned char)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
-
 
 				procedure.jit_regular_operation(PUSH_ARG,
 						jit_constant(i2));
