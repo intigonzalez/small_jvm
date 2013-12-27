@@ -342,22 +342,22 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			//v = variables.get(op2);
 			//ofile << "mov " << v->toString() << "," << reg2->name << endl;
 			break;
-		case ARRAY_LEN:
-			// length of array
-			used.reset();
-			// find empty register
-			v = variables.get(op1);
-			reg = getRegister(op1, variables);
-			used.set(reg->id);
-			v->setSingleLocation();
-			reg->setSingleReference(v);
-			// get a different register to store the values
-			reg2 = getRegister(res, variables, used.to_ulong(),false);
-			v = variables.get(res);
-			v->setRegisterLocation(reg2);
-			reg2->setSingleReference(v);
-			functor.S() << "mov " << reg2->name << ",[" << reg->name << "+8]\n";
-			break;
+//		case ARRAY_LEN:
+//			// length of array
+//			used.reset();
+//			// find empty register
+//			v = variables.get(op1);
+//			reg = getRegister(op1, variables);
+//			used.set(reg->id);
+//			v->setSingleLocation();
+//			reg->setSingleReference(v);
+//			// get a different register to store the values
+//			reg2 = getRegister(res, variables, used.to_ulong(),false);
+//			v = variables.get(res);
+//			v->setRegisterLocation(reg2);
+//			reg2->setSingleReference(v);
+//			functor.S() << "mov " << reg2->name << ",[" << reg->name << "+8]\n";
+//			break;
 		case GOTO:
 			// goto
 			functor.S() << "jmp " << res.toString() << '\n';
@@ -444,16 +444,20 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			reg->setSingleReference(v);
 			break;
 		case MOV_FROM_ADDR:
+			used.reset();
 			reg1 = getRegister(op1, variables); // the address
-			reg = getRegister(res,variables); // the result will be here
-			v = variables.get(res);
+			used.set(reg1->id);
+			reg = getRegister(res,variables, used.to_ulong(), false); // the result will be here
 			functor.S() << "mov " <<  reg->name << ",[" << reg1->name << "]\n";
+			v = variables.get(res);
 			v->setRegisterLocation(reg);
 			reg->setSingleReference(v);
 			break;
 		case MOV_TO_ADDR:
+			used.reset();
 			reg1 = getRegister(op1, variables); // the address to dereference
-			reg = getRegister(op2, variables);
+			used.set(reg1->id);
+			reg = getRegister(op2, variables, used.to_ulong(), false);
 //			reg = getRegister(res,variables); // the result will be here
 			functor.S() << "mov dword [" <<  reg1->name << "]," << reg->name << "\n";
 			break;

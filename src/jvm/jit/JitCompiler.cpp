@@ -451,17 +451,17 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 						jit_address((void*)&newRawArray),
 						jit_constant(2),
 						ArrRef));
-
-
-//				values.push(procedure.jit_regular_operation(NEW_ARRAY, v, jit_constant(i2), ArrRef));
-				//createNewRawArray(i2);
 				index += 2;
 				break;
 			case arraylength:
-				v = values.top(); values.pop();
-//					i2 = ObjectHandler::instance()->getArrayLength(popRef());
-				values.push(procedure.jit_regular_operation(ARRAY_LEN, v, jit::useless_value, Integer));
-//					push(i2);
+				v1 = values.top(); values.pop();
+
+				v = procedure.jit_binary_operation(PLUS,
+						v1, jit_constant(8));
+
+				values.push(procedure.jit_regular_operation(MOV_FROM_ADDR,
+						v,useless_value, Integer));
+//				values.push(procedure.jit_regular_operation(ARRAY_LEN, v, jit::useless_value, Integer));
 				index++;
 				break;
 			case op_dup:

@@ -80,11 +80,13 @@ jit_value Routine::jit_binary_operation(OP_QUAD op, jit_value op1,
                 jit_value op2)
 {
 	Quadr r;
-	if (op1.meta.type == op2.meta.type) {
+	if ((op1.meta.type == op2.meta.type)||
+		(op1.meta.type == ArrRef && op2.meta.type == Integer) ||
+		(op1.meta.type == ObjRef && op2.meta.type == Integer)) {
 		r.op1 = op1;
 		r.op2 = op2;
 		r.op = op;
-		r.res.meta.type = op1.meta.type;
+		r.res.meta.type = op2.meta.type;
 		r.res.meta.scope = Temporal;
 		r.label = -1;
 		r.res.value = getTempId();
@@ -94,8 +96,7 @@ jit_value Routine::jit_binary_operation(OP_QUAD op, jit_value op1,
 		if (op2.meta.scope == Temporal)
 			freeTmp.insert(op2.value);
 		return r.res;
-	} else
-		throw new std::exception();
+	} else throw new std::runtime_error("Operating incompatible types");
 }
 
 /**
