@@ -237,7 +237,7 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	file.open();
 	functor = ReleaseX86RegisterFunctor(file.getFile());
 	// let start generating
-	functor.S() << "BITS 32" << '\n';
+	functor.S() << "use32" << '\n';
 	functor.S() << "ORG " << (unsigned)buf << '\n';
 	functor.S() << "push ebp" << '\n';
 	functor.S() << "mov ebp,esp" << '\n';
@@ -293,7 +293,9 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 
 	file.close();
 	std::string output = file.getFilePath().substr(0, file.getFilePath().size() - 4) + ".bin";
-	std::string command = "nasm -f bin -o " + output + " " + file.getFilePath();
+	//std::string command = "nasm -f bin -o " + output + " " + file.getFilePath();
+	std::string command = "/home/inti/workspace/vm2/fasm " + file.getFilePath()
+			+ " " + output + " > /dev/null";
 	LOG_DBG(command, " will execute");
 	if (std::system(command.c_str())) {
 		LOG_ERR("Error compiling method with back-end assembler");
