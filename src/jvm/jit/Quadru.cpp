@@ -11,6 +11,8 @@
 
 #include <boost/graph/graphviz.hpp>
 
+#include "../../utilities/Logger.h"
+
 using namespace std;
 
 namespace jit {
@@ -96,7 +98,7 @@ jit_value Routine::jit_binary_operation(OP_QUAD op, jit_value op1,
 		if (op2.meta.scope == Temporal)
 			freeTmp.insert(op2.value);
 		return r.res;
-	} else throw new std::runtime_error("Operating incompatible types");
+	} else throw(std::runtime_error("Operating incompatible types"));
 }
 
 /**
@@ -189,7 +191,7 @@ jit_value jit::Routine::jit_copy(jit_value v)
 		q.push_back(r);
 		return r.res;
 	default:
-		throw new runtime_error("Really? Is there some other kind of value");
+		throw(runtime_error("Really? Is there some other kind of value"));
 	}
 }
 
@@ -302,15 +304,16 @@ void Routine::print()
 	ofstream file("in.txt");
 	boost::write_graphviz(file, g, make_label_writer(g));
 	file.close();
-	std::cout << "dsffsdf " << sizeof(Quadr) << " " << sizeof(DataQuad)
-	                << " " << sizeof(jit_value) << std::endl;
+//	std::cout << "Info the  " << sizeof(Quadr) << " " << sizeof(DataQuad)
+//	                << " " << sizeof(jit_value) << std::endl;
 	for (unsigned i = 0; i < q.size(); i++) {
 		Quadr tmp = q[i];
 		if (tmp.label != -1)
-			std::cout << "LA" << tmp.label << ":" << endl;
-		std::cout << '(' << tmp.op << "," << tmp.op1.toString() << ","
-		                << tmp.op2.toString() << ","
-		                << tmp.res.toString() << ")" << endl;
+			LOG_INF ("LA" , tmp.label , ":" );
+
+		LOG_INF ( '(' , tmp.op , "," , tmp.op1.toString() , ","
+		                , tmp.op2.toString() , ","
+		                , tmp.res.toString() , ")" );
 	}
 }
 

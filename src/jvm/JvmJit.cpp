@@ -5,15 +5,19 @@
  *      Author: inti
  */
 
-#include "JvmJit.h"
 #include <stack>
 #include <algorithm>
 #include <set>
 #include <vector>
+
+
+#include "JvmJit.h"
 #include "jit/Quadru.h"
 #include "jit/Simplex86Generator.h"
 #include "jit/JitCompiler.h"
 #include "../jvmclassfile/JVMSpecUtils.h"
+#include "../utilities/Logger.h"
+
 
 using namespace jit;
 
@@ -63,13 +67,15 @@ void* JvmJit::compile(ClassFile* cf, MethodInfo* method)
 		method->address = addr;
 		method->cleanCode();
 
-		cout << "Method " << cf->getClassName() << ":"
-			                << cf->getUTF(method->name_index) << " compiled"
-			                << endl;
+		LOG_DBG("Method ", cf->getClassName(),":",cf->getUTF(method->name_index), " compiled");
+//		cout << "Method " << cf->getClassName() << ":"
+//			                << cf->getUTF(method->name_index) << " compiled"
+//			                << endl;
 	}
-	cout << "Method " << cf->getClassName() << ":"
-	                << cf->getUTF(method->name_index) << " is in address : "
-	                << addr << endl;
+	LOG_DBG("Method ", cf->getClassName(),":",cf->getUTF(method->name_index), " is in address ", addr);
+//	cout << "Method " << cf->getClassName() << ":"
+//	                << cf->getUTF(method->name_index) << " is in address : "
+//	                << addr << endl;
 	return addr;
 }
 

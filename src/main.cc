@@ -47,7 +47,6 @@ int main(int argc, char* argv[])
 	   }
 	}
 //	ios_base::sync_with_stdio(true);
-	cout << "Starting : " << sizeof(void*) << '\n';
 	ClassLoader::Instance()->AddPath(".");
 	for (int i = optind+1; i < argc ; i++)
 		ClassLoader::Instance()->AddPath(argv[i]);
@@ -93,7 +92,7 @@ int main(int argc, char* argv[])
 		int r = a(1,array);
 		result = r;
 	});
-	cout << "Results : " << result << endl;
+	cout << "accessingArray(1, Arr[20]) : " << result << endl;
 
 	int n = 6;
 	JvmExecuter::execute(cf,"factorial","(I)I",(JvmJit*)exec, [&result,n] (JvmExecuter* exec, void * addr) {

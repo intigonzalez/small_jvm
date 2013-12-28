@@ -24,6 +24,7 @@
 #include <fcntl.h>
 
 #include "../../utilities/TemporaryFile.h"
+#include "../../utilities/Logger.h"
 
 #include "../down_calls.h"
 
@@ -261,7 +262,8 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	while (!vec.empty()) {
 		boost::graph_traits<ControlFlowGraph>::out_edge_iterator ai,ai_end;
 		vertex_t v0 = vec.back();
-		std::cout << " Block " << v0 << std::endl;
+		LOG_DBG("Compiling Block", v0);
+//		std::cout << " Block " << v0 << std::endl;
 		vec.pop_back();
 		BasicBlock* bb = routine.g[v0];
 		generateBasicBlock(variables, bb);
@@ -291,12 +293,19 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	file.close();
 	std::string output = file.getFilePath().substr(0, file.getFilePath().size() - 4) + ".bin";
 	std::string command = "nasm -f bin -o " + output + " " + file.getFilePath();
-	std::cout << command << " will execute" <<  std::endl;
-	int status = std::system(command.c_str());
+	LOG_DBG(command, " will execute");
+	if (std::system(command.c_str())) {
+		LOG_ERR("Error compiling method with back-end assembler");
+		throw(std::runtime_error("Error compiling method"));
+	}
 
 	int fd2 = open(output.c_str(), O_RDONLY);
 	buf = manager->getChunck(4096);
-	int readed = read(fd2, buf, 4096);
+	int nbRead = read(fd2, buf, 4096);
+	if (nbRead == 4096) {
+		LOG_ERR("A bigger buffer is required to load the binary code");
+		throw(std::runtime_error(""));
+	}
 	close(fd2);
 
 	return buf;
