@@ -299,11 +299,15 @@ label_writer make_label_writer(ControlFlowGraph& g)
 	return label_writer(g);
 }
 
-void Routine::print()
-{
+void Routine::print_in_graphviz() {
 	ofstream file("in.txt");
 	boost::write_graphviz(file, g, make_label_writer(g));
 	file.close();
+}
+
+void Routine::print()
+{
+
 //	std::cout << "Info the  " << sizeof(Quadr) << " " << sizeof(DataQuad)
 //	                << " " << sizeof(jit_value) << std::endl;
 	for (unsigned i = 0; i < q.size(); i++) {

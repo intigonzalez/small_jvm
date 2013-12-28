@@ -205,7 +205,6 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 	operatorToInstruction[PLUS] = "add ";
 	operatorToInstruction[SUB] = "sub ";
 	operatorToInstruction[MUL] = "imul ";
-	int nbParameters = 0;
 	string tmpStr;
 	std::bitset<6> used;
 
@@ -348,22 +347,6 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			//v = variables.get(op2);
 			//ofile << "mov " << v->toString() << "," << reg2->name << endl;
 			break;
-//		case ARRAY_LEN:
-//			// length of array
-//			used.reset();
-//			// find empty register
-//			v = variables.get(op1);
-//			reg = getRegister(op1, variables);
-//			used.set(reg->id);
-//			v->setSingleLocation();
-//			reg->setSingleReference(v);
-//			// get a different register to store the values
-//			reg2 = getRegister(res, variables, used.to_ulong(),false);
-//			v = variables.get(res);
-//			v->setRegisterLocation(reg2);
-//			reg2->setSingleReference(v);
-//			functor.S() << "mov " << reg2->name << ",[" << reg->name << "+8]\n";
-//			break;
 		case GOTO:
 			// goto
 			functor.S() << "jmp " << res.toString() << '\n';
@@ -401,12 +384,10 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		case PUSH_ARG:
 			if (op1.meta.type == Integer || op1.meta.type == ObjRef || op1.meta.type == ArrRef) {
 				functor.S() << "push dword " << getData(op1, variables) << '\n';
-				nbParameters++;
 			}
 			// FIXME: other cases
 			break;
 		case PLAIN_CALL:
-			assert(op2.value == nbParameters);
 			// FIXME, take into account the return type
 			registers[0]->freeRegister(functor);
 			registers[2]->freeRegister(functor);
@@ -415,7 +396,6 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			functor.S() << "call dword " << pointer << '\n';
 			if (op2.value > 0)
 				functor.S() << "add esp, " << op2.value*4 << '\n'; // FIXME, number of parameters
-			nbParameters = 0;
 			reg = registers[0];
 			v = variables.get(res);
 			v->setRegisterLocation(reg);
@@ -426,24 +406,14 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			registers[0]->freeRegister(functor);
 			registers[2]->freeRegister(functor);
 			registers[3]->freeRegister(functor);
-			if (op1.meta.scope == Constant && op1.meta.type == ObjRef) {
-				pointer = (void*)op1.value;
-				functor.S() << "call " << pointer << '\n';
-			}
-			else if (op2.meta.scope == Constant && op2.meta.type == Integer) {
-				// We detect an indirect call, so we need to insert the call to the stub method
-				functor.S() << "mov ecx, LabelStub" << op2.value << '\n';
-				functor.S() << "call ecx\n";
-				stubs.push_back(op2.value);
-			}
-			else if (op2.meta.scope == Constant && op2.meta.type == ObjRef) {
-				functor.S() << "mov ecx, LabelStub" << (stubs2.size() + 100000) << '\n';
-				functor.S() << "call ecx\n";
-				stubs2.push_back((void*)op2.value);
-			}
-			if (nbParameters > 0)
-				functor.S() << "add esp, " << nbParameters*4 << '\n'; // FIXME, number of parameters
-			nbParameters = 0;
+
+			functor.S() << "mov ecx, LabelStub" << (stubs2.size() + 100000) << '\n';
+			functor.S() << "call ecx\n";
+			stubs2.push_back((void*)op1.value);
+
+			if (op2.value > 0)
+				functor.S() << "add esp, " << op2.value*4 << '\n'; // FIXME, number of parameters
+
 			reg = registers[0];
 			v = variables.get(res);
 			v->setRegisterLocation(reg);
@@ -483,9 +453,9 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 					functor.S() << "mov " << registers[0]->name << "," << reg->name << '\n';
 				}
 			}
-			functor.S() << "add esp, " << variables.variables.size() * 4 << '\n';
-			functor.S() << "pop ebp" << '\n';
-//			functor.S() << "leave\n";
+//			functor.S() << "add esp, " << variables.variables.size() * 4 << '\n';
+//			functor.S() << "pop ebp" << '\n';
+			functor.S() << "leave\n";
 			functor.S() << "ret" << '\n';
 			break;
 		}

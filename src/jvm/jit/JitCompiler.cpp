@@ -146,10 +146,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				v1 = values.top(); values.pop(); // array
 				procedure.jit_regular_operation(SET_ARRAY_POS, v,v2, v1);
 				index++;
-//					v = top(); pop(); // value
-//					i2 = popI(); // index
-//					ref = popRef();
-//					ObjectHandler::instance()->assignArrayElement(ref, i2, &v);
 				break;
 			case iload_0:
 			case iload_1:
@@ -157,13 +153,11 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case iload_3:
 				b = opcode - iload_0;
 				values.push(jit_local_field(b, Integer));
-//					push(getLocalI(b));
 				index++;
 				break;
 			case iload:
 				i2 = (int32_t) code->code[index + 1];
 				values.push(jit_local_field(i2, Integer));
-//					push(getLocalI(i2));
 				index += 2;
 				break;
 //				case caload:
@@ -270,9 +264,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				else if (opcode == idiv) oper = DIV;
 				else if (opcode == irem) oper = REM;
 				values.push(procedure.jit_binary_operation(oper, v1,v2));
-//					b = popI();
-//					a = popI();
-//					push(a + b);
 				index++;
 				break;
 			case iinc:
@@ -280,7 +271,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				v2 = jit_constant(a);
 				b = (unsigned char) code->code[index + 1];
 				v1 = jit_local_field(b, Integer);
-//					setLocal((unsigned char) code->code[index + 1], b + a);
 				procedure.jit_regular_operation(IINC, v1,v2, jit::useless_value);
 				index += 3;
 				break;
@@ -325,8 +315,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
 					values.push(procedure.jit_regular_operation(
 							CALL_STATIC,
-							useless_value,
 							jit_address(task),
+							jit_constant(count2),
 							Integer));
 				}
 //					generateStaticCall(cf, i2, code);
@@ -367,8 +357,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
 					procedure.jit_regular_operation(
 							CALL_STATIC,
-							useless_value,
 							jit_address(task),
+							jit_constant(count2),
 							Integer);
 				}
 				index += 3;
@@ -409,8 +399,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
 					values.push(procedure.jit_regular_operation(
 							CALL_STATIC,
-							useless_value,
 							jit_address(task),
+							jit_constant(count2),
 							Integer));
 				}
 				index += 3;

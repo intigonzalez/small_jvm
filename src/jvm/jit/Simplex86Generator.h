@@ -241,7 +241,8 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	functor.S() << "ORG " << (unsigned)buf << '\n';
 	functor.S() << "push ebp" << '\n';
 	functor.S() << "mov ebp,esp" << '\n';
-	functor.S() << "sub esp," << variables.variables.size()*4 << '\n';
+	if (variables.variables.size() > 0)
+		functor.S() << "sub esp," << variables.variables.size()*4 << '\n';
 
 	// let remove the quad from the routine
 	routine.q.clear();

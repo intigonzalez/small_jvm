@@ -138,6 +138,7 @@ struct Routine {
 	 * Debug
 	 */
 	void print();
+	void print_in_graphviz();
 };
 
 /**

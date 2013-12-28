@@ -48,6 +48,7 @@ public:
 static Logger log_inst( "vm2 execution.log" );
 
 #define LOG_LEVEL_ON
+
 #ifdef LOG_LEVEL_ON
 
 #define LOG_INF log_inst.log< LogLevel::Info >
