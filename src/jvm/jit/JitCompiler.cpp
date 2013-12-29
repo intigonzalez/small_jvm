@@ -176,6 +176,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				index += 2;
 				break;
 			case if_icmpge:
+			case if_icmpeq:
 			case if_icmple:
 			case if_icmpgt:
 			case if_icmpne:
@@ -189,6 +190,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				oper = JGE;
 				if (opcode == if_icmple) oper = JLE;
 				else if (opcode == if_icmpgt) oper = JG;
+				else if (opcode == if_icmpgt) oper = JEQ;
 				else if (opcode == if_icmpne) oper = JNE;
 				procedure.jit_regular_operation(oper, v1,v2, jit_label(branch1));
 				index += 3;
@@ -204,11 +206,13 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					break;
 			case ifne:
 			case ifle:
+			case iflt:
 			case ifge:
 				v1 = values.top(); values.pop();
 				oper = JNE;
 				if (opcode == ifle) oper = JLE;
 				else if (opcode == ifge) oper = JGE;
+				else if (opcode == iflt) oper = JLT;
 
 				branch1 = (char) code->code[index + 1];
 				branch2 = (unsigned char)code->code[index + 2];
@@ -239,6 +243,11 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				v2 = values.top(); values.pop();
 				v1 = values.top(); values.pop();
 				values.push(procedure.jit_regular_operation(GET_ARRAY_POS, v1,v2, Integer));
+				index++;
+				break;
+			case ineg:
+				v1 = values.top(); values.pop();
+				values.push(procedure.jit_binary_operation(SUB, jit_constant(0),v1));
 				index++;
 				break;
 			case iadd:

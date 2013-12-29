@@ -233,7 +233,10 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		case CRAZY_OP:
 			reg = getRegister(op1, variables);
 			v = variables.get(res);
+			// FIXME: this seems to be redundant
 			functor.S() << "mov " << v->toString() << "," << reg->name << '\n';
+			v->setRegisterLocation(reg);
+			reg->setSingleReference(v); // FIXME: I need many to many
 			continue;
 		case ASSIGN:
 			if (op1.meta.scope == Constant) {
@@ -367,8 +370,10 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			break;
 		case JGE:
 		case JLE:
+		case JLT:
 		case JG:
 		case JNE:
+		case JEQ:
 			if (op1.meta.scope != Constant || op2.meta.scope != Constant) {
 				// find register for op1 and copy it if necessary
 				reg = getRegister(op1, variables);
@@ -379,8 +384,10 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 					<< getData(op2, variables) << '\n';
 			tmpStr = "jge ";
 			if (ope == JLE) tmpStr = "jle ";
+			else if (ope == JLT) tmpStr = "jl ";
 			else if (ope == JG) tmpStr = "jg ";
 			else if (ope == JNE) tmpStr = "jne ";
+			else if (ope == JEQ) tmpStr = "jz ";
 
 			functor.S() << tmpStr << res.toString() << '\n';
 			break;
@@ -426,7 +433,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			used.reset();
 			reg1 = getRegister(op1, variables); // the address
 			used.set(reg1->id);
-			reg = getRegister(res,variables, used.to_ulong(), true); // the result will be here
+			reg = getRegister(res,variables, used.to_ulong(), false); // the result will be here
 			functor.S() << "mov " <<  reg->name << ",[" << reg1->name << "]\n";
 			v = variables.get(res);
 			v->setRegisterLocation(reg);

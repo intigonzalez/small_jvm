@@ -14,6 +14,7 @@
 #define irem		0x70
 #define ishl		120
 #define ishr		122
+#define ineg		116
 
 #define fadd 		0x62
 #define fsub 		0x66
@@ -96,8 +97,10 @@
 #define if_icmpgt	163
 #define if_icmple	164
 
+#define iflt	155
 #define ifge	156
 #define ifle	158
+
 
 #define castore 0x55
 #define caload 0x34
