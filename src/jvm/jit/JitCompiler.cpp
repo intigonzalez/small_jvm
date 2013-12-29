@@ -271,7 +271,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				v2 = jit_constant(a);
 				b = (unsigned char) code->code[index + 1];
 				v1 = jit_local_field(b, Integer);
-				procedure.jit_regular_operation(IINC, v1,v2, jit::useless_value);
+				procedure.jit_regular_operation(IINC, v1,v2, useless_value);
 				index += 3;
 				break;
 			case op_goto:
@@ -319,8 +319,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 							jit_constant(count2),
 							Integer));
 				}
-//					generateStaticCall(cf, i2, code);
-//					values.push(jit_constant(123));
 				index += 3;
 				break;
 			case invokespecial:
@@ -451,18 +449,15 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				v1 = values.top(); values.pop();
 
 				v = procedure.jit_binary_operation(PLUS,
-						v1, jit_constant(8));
+						v1, jit_constant(BASE_OBJECT_SIZE));
 
 				values.push(procedure.jit_regular_operation(MOV_FROM_ADDR,
 						v,useless_value, Integer));
-//				values.push(procedure.jit_regular_operation(ARRAY_LEN, v, jit::useless_value, Integer));
 				index++;
 				break;
 			case op_dup:
 				v = values.top();
 				values.push(procedure.jit_copy(v));
-//					type = topType();
-//					push(v, type);
 				index++;
 				break;
 			case op_dup2:
@@ -472,8 +467,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				values.push(v1);
 				values.push(procedure.jit_copy(v2));
 				values.push(procedure.jit_copy(v1));
-//				values.push(v2);
-//				values.push(v1);
 				index++;
 				break;
 			case putfield:
@@ -569,8 +562,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 						v1,
 						useless_value,
 						Integer));
-
-//				fieldAccess(cf, i2, false);
 				index += 3;
 				break;
 			case getstatic:
@@ -587,11 +578,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 						jit_address((void*)&getStaticFieldAddress),
 						jit_constant(2),
 						Integer);
-//				v1 = procedure.jit_regular_operation(
-//						GET_STATIC_FIELD_ADDR,
-//						jit_address(cf),
-//						jit_constant(i2),
-//						Integer);
 				// FIXME, the same ugly assumption regarding member's type, Why Integer???
 				v2 = procedure.jit_regular_operation(
 						MOV_FROM_ADDR,

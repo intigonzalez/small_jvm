@@ -101,6 +101,9 @@ void x86Register::freeRegister(Function fn) {
 //			ofile << "mov " << v->toString() << "," << name << '\n';
 			v->attach(v);
 		}
+		else if (v->inVar(v) && v->inRegister(this)) {
+			v->deattachSimple(this);
+		}
 	}
 	valueOf.clear();
 }
@@ -200,7 +203,8 @@ Simplex86Generator::~Simplex86Generator() {
 }
 
 void Simplex86Generator::generateBasicBlock(const Vars& variables,
-	BasicBlock* bb) {
+	BasicBlock* bb)
+{
 	map<int, string> operatorToInstruction;
 	operatorToInstruction[PLUS] = "add ";
 	operatorToInstruction[SUB] = "sub ";
@@ -453,8 +457,6 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 					functor.S() << "mov " << registers[0]->name << "," << reg->name << '\n';
 				}
 			}
-//			functor.S() << "add esp, " << variables.variables.size() * 4 << '\n';
-//			functor.S() << "pop ebp" << '\n';
 			functor.S() << "leave\n";
 			functor.S() << "ret" << '\n';
 			break;
@@ -465,6 +467,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		if (op2.meta.scope == Temporal)
 			variables.get(op2)->markAsForgetten();
 	}
+	// FXIME : this is a BottleNect for performance
 	for (auto& r : registers)
 		r->freeRegister(functor);
 }
