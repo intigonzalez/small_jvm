@@ -364,6 +364,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		case JGE:
 		case JLE:
 		case JG:
+		case JNE:
 			if (op1.meta.scope != Constant || op2.meta.scope != Constant) {
 				// find register for op1 and copy it if necessary
 				reg = getRegister(op1, variables);
@@ -374,15 +375,9 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 					<< getData(op2, variables) << '\n';
 			tmpStr = "jge ";
 			if (ope == JLE) tmpStr = "jle ";
-			if (ope == JG) tmpStr = "jg ";
+			else if (ope == JG) tmpStr = "jg ";
+			else if (ope == JNE) tmpStr = "jne ";
 
-			functor.S() << tmpStr << res.toString() << '\n';
-			break;
-		case JNE:
-			// find register for op1 and copy it if necessary
-			reg = getRegister(op1, variables);
-			functor.S() << "cmp " << reg->name << ", 0\n";
-			tmpStr = "jne ";
 			functor.S() << tmpStr << res.toString() << '\n';
 			break;
 		case PUSH_ARG:

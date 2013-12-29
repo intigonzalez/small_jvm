@@ -152,12 +152,14 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case iload_2:
 			case iload_3:
 				b = opcode - iload_0;
-				values.push(jit_local_field(b, Integer));
+				v1 = jit_local_field(b, Integer);
+				values.push(procedure.jit_copy(v1));
 				index++;
 				break;
 			case iload:
 				i2 = (int32_t) code->code[index + 1];
-				values.push(jit_local_field(i2, Integer));
+				v1 = jit_local_field(i2, Integer);
+				values.push(procedure.jit_copy(v1));
 				index += 2;
 				break;
 //				case caload:
@@ -176,6 +178,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case if_icmpge:
 			case if_icmple:
 			case if_icmpgt:
+			case if_icmpne:
 				v2 = values.top(); values.pop(); // b
 				v1 = values.top(); values.pop(); // a
 				// jump if v1 >= v2
@@ -186,6 +189,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				oper = JGE;
 				if (opcode == if_icmple) oper = JLE;
 				else if (opcode == if_icmpgt) oper = JG;
+				else if (opcode == if_icmpne) oper = JNE;
 				procedure.jit_regular_operation(oper, v1,v2, jit_label(branch1));
 				index += 3;
 				break;
@@ -224,7 +228,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				branch2 = (unsigned char)code->code[index + 2];
 				branch1 = index + ((branch1 << 8) | branch2);
 				labels.insert(branch1);
-				procedure.jit_regular_operation(oper, v1, useless_value, jit_label(branch1));
+				procedure.jit_regular_operation(oper, v1, jit_constant(0), jit_label(branch1));
 				index += 3;
 				break;
 //				case ifnull:

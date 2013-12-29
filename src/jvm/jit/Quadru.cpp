@@ -176,9 +176,9 @@ jit_value jit::Routine::jit_copy(jit_value v)
 	case Constant:
 	case Useless:
 	case Label:
-	case Local:
 		return v;
 	case Temporal:
+	case Local:
 		// Fuck, I need to copy to a new location in a crazy way
 		r.op1 = v;
 		r.op2 = useless_value;
