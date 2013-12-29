@@ -82,6 +82,7 @@
 
 #define op_pop		0x57
 #define aconst_null	0x01
+#define iconst_m1	0x02
 #define iconst_0	0x03
 #define iconst_1	0x04
 #define iconst_2	0x05

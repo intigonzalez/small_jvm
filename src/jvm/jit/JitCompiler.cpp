@@ -107,6 +107,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					setLocal(b, popRef());
 //					index += 2;
 //					break;
+			case iconst_m1:
 			case iconst_0:
 			case iconst_1:
 			case iconst_2:
