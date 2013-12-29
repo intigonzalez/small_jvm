@@ -66,7 +66,7 @@ public class Loops {
 	}
 
 	public static int test4() {
-		// calculating 3^3, naive algorithm
+		// calculating 3^13, naive algorithm
 		int a = 3, b = 13;
 
 		int p = 1;
@@ -74,6 +74,30 @@ public class Loops {
 			p *= a;
 		return p;
 	}
-
 	
+	public static int test5() {
+		/* Description
+		 * Nested loops 
+		 */ 
+
+		int c = 0;
+		for (int i = 0 ; i < 100; ++i) {
+			for (int j = i ; j < 2*i ; j++) {
+				for (int k = 10 ; k < 1000 ; k++)
+					c ++;
+			}
+		}
+
+		// now fibo(c)
+		int f0 = 0;
+		int f1 = 1;
+		int index = 2;
+		while (index <= c) {
+			int tmp = f0 + f1;
+			f0 = f1;
+			f1 = tmp;
+			index++;
+		}
+		return f1;
+	}
 }
