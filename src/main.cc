@@ -56,7 +56,15 @@ int main(int argc, char* argv[])
 	Space::instance()->setSpaceSize(4*1024*1024);
 	JvmExecuter* exec = JvmJit::instance();
 
-	string main_class(argv[clazzIndex]);
+	string tmp(argv[clazzIndex]);
+	string main_class;
+	for (string::iterator it = tmp.begin(), itEnd = tmp.end() ; it != itEnd ; ++it) {
+		if (*it == '.')
+			main_class += '/';
+		else
+			main_class += *it;
+	}
+
 	ClassFile* cf = exec->loadAndInit(main_class);
 
 	if (cf == nullptr) {
