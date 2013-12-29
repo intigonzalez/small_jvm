@@ -69,4 +69,17 @@ public class Test1 {
 		a = b = c = d;
 		return a + b + c + d % 134;
 	}
+
+	public static int test10() {
+		int m = 100;
+		int count = (m)*(m+1)/2;
+		return count;
+	}
+
+	public static int test11() {
+		int b = 12;
+		int x = (b++) - (--b);
+		x -= 114 + ++b;
+		return x;
+	}
 }
