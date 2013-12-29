@@ -270,7 +270,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			functor.S() << "xor edx, edx" << '\n';
 			tmpStr = getDataForDiv(op2, variables);
 			functor.S() << "idiv dword " << tmpStr << '\n';
-			if (ope == '%')
+			if (ope == REM)
 				reg = registers[3];
 
 			v = variables.get(res);
