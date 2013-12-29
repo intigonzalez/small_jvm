@@ -95,6 +95,7 @@
 #define if_icmple	164
 
 #define ifge	156
+#define ifle	158
 
 #define castore 0x55
 #define caload 0x34

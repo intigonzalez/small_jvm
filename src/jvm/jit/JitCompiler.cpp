@@ -193,25 +193,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				procedure.jit_regular_operation(oper, v1,v2, jit_label(branch1));
 				index += 3;
 				break;
-//				case if_icmpne:
-//					b = popI();
-//					a = popI();
-//					if (a != b) {
-//						branch1 =(char)code->code[index + 1];
-//						branch2 = (unsigned char)code->code[index + 2];
-//						index += (branch1 << 8) | branch2;
-//					} else
-//						index += 3;
-//					break;
-//				case ifge:
-//					a = popI();
-//					if (a>=0) {
-//						branch1 = (char) code->code[index + 1];
-//						branch2 = (unsigned char)code->code[indeEsto es muy lindo 3 : 0xb7897008x + 2];
-//						index += (branch1 << 8) | branch2;
-//					} else
-//						index += 3;
-//					break;
 //				case ifeq:
 //					a = popI();
 //					if (!a) {
@@ -222,8 +203,13 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //						index += 3;
 //					break;
 			case ifne:
+			case ifle:
+			case ifge:
 				v1 = values.top(); values.pop();
 				oper = JNE;
+				if (opcode == ifle) oper = JLE;
+				else if (opcode == ifge) oper = JGE;
+
 				branch1 = (char) code->code[index + 1];
 				branch2 = (unsigned char)code->code[index + 2];
 				branch1 = index + ((branch1 << 8) | branch2);
