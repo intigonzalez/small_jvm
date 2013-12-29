@@ -12,6 +12,8 @@
 #define imul 		0x68
 #define idiv 		0x6c
 #define irem		0x70
+#define ishl		120
+#define ishr		122
 
 #define fadd 		0x62
 #define fsub 		0x66

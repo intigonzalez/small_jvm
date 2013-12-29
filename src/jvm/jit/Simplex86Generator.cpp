@@ -209,6 +209,8 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 	operatorToInstruction[PLUS] = "add ";
 	operatorToInstruction[SUB] = "sub ";
 	operatorToInstruction[MUL] = "imul ";
+	operatorToInstruction[SHL] = "shl ";
+	operatorToInstruction[SHR] = "shr ";
 	string tmpStr;
 	std::bitset<6> used;
 
@@ -252,6 +254,8 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		case PLUS:
 		case MUL:
 		case SUB:
+		case SHL:
+		case SHR:
 			if (op1.meta.scope != Constant || op2.meta.scope != Constant) {
 				// find register for op1 and copy it if necessary
 				reg = getRegister(op1, variables);

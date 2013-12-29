@@ -246,6 +246,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case imul:
 			case idiv:
 			case irem:
+			case ishl:
+			case ishr:
 				v2 = values.top(); values.pop();
 				v1 = values.top(); values.pop();
 				oper = PLUS;
@@ -253,6 +255,9 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				else if (opcode == imul) oper = MUL;
 				else if (opcode == idiv) oper = DIV;
 				else if (opcode == irem) oper = REM;
+				else if (opcode == ishl) oper = SHL;
+				else if (opcode == ishr) oper = SHR;
+
 				values.push(procedure.jit_binary_operation(oper, v1,v2));
 				index++;
 				break;
