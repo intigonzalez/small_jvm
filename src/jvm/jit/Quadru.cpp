@@ -219,7 +219,7 @@ void Routine::buildControlFlowGraph()
 			if ((*it).label != 0) {
 				// the connection only exist if the previous instruction was not a goto
 				BasicBlock* block = g[lastV];
-				if (block->q[block->q.size() - 1].op != 1)
+				if (block->q[block->q.size() - 1].op != GOTO)
 					boost::add_edge(lastV, vertex, g);
 			}
 			lastV = vertex;
@@ -248,7 +248,7 @@ void Routine::buildControlFlowGraph()
 
 			boost::add_edge(lastV, vertex, g);
 			// if not a GOTO then mark the next instruction as BasicBlock start
-			nextIsNewBlock = (*it).op != 1;
+			nextIsNewBlock = (*it).op != GOTO;
 		}
 		BasicBlock* block = g[lastV];
 		block->q.push_back(*it);
@@ -307,7 +307,7 @@ void Routine::print_in_graphviz() {
 
 void Routine::print()
 {
-
+	print_in_graphviz();
 //	std::cout << "Info the  " << sizeof(Quadr) << " " << sizeof(DataQuad)
 //	                << " " << sizeof(jit_value) << std::endl;
 	for (unsigned i = 0; i < q.size(); i++) {

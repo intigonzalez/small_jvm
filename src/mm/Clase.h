@@ -51,6 +51,13 @@ namespace MemoryManagement {
 		virtual ~IntType();
 	};
 
+	class ByteType: public Type {
+	public:
+		ByteType();
+		virtual int size();
+		virtual ~ByteType();
+	};
+
 	class FloatType: public Type {
 	public:
 		FloatType();

@@ -249,8 +249,8 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 
 	// generate in order from the Control-Flow Graph
 	// FIXME : I'm doing big assumptions here
-	// 1 - I'm considering that every basic block will have at most to children
-	// 2 - I'm considering that if the last instruction is conditional jump then
+	// 1 - I'm considering that every basic block will have at most two children
+	// 2 - I'm considering that if the last instruction is a conditional jump then
 	// 	   the second edge will be the jump and the first one will be the next
 	//	   instruction (when the condition is false). This assumption holds for
 	//	   my method to build the Control-Flow Graph but it is not general.
@@ -262,17 +262,17 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	vec.push_back(0);
 	while (!vec.empty()) {
 		boost::graph_traits<ControlFlowGraph>::out_edge_iterator ai,ai_end;
-		vertex_t v0 = vec.back();
+		vertex_t v0 = vec.back(); vec.pop_back();
 		LOG_DBG("Compiling Block", v0);
-//		std::cout << " Block " << v0 << std::endl;
-		vec.pop_back();
 		BasicBlock* bb = routine.g[v0];
 		generateBasicBlock(variables, bb);
+//		int idx = 0;
 		for (tie(ai, ai_end) = boost::out_edges(v0, routine.g) ; ai != ai_end ; ++ai) {
 			if (!mark[(*ai).m_target]) {
 				vec.push_back((*ai).m_target);
 				mark[(*ai).m_target] = true;
 			}
+//			idx ++;
 		}
 	}
 

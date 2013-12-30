@@ -38,8 +38,6 @@
 #define	freturn		0xae
 #define ldc			0x12
 #define ldc_w		0x13
-#define ifne		0x9a
-#define ifeq		0x99
 #define ifnull	0xc6
 #define ifnonnull 0xc7
 #define op_goto 	0xa7
@@ -101,7 +99,9 @@
 #define iflt	155
 #define ifge	156
 #define ifle	158
-
+#define ifeq	153
+#define ifgt	157
+#define ifne	0x9a
 
 #define castore 0x55
 #define caload 0x34

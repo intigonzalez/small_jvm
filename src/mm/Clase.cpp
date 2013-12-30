@@ -43,6 +43,14 @@ namespace MemoryManagement {
 		return sizeof(int32_t);
 	}
 
+	ByteType::ByteType() : Type("byte") { }
+
+	ByteType::~ByteType() { }
+
+	int ByteType::size() {
+		return sizeof(int8_t);
+	}
+
 	FloatType::FloatType() : Type("float") { }
 
 	FloatType::~FloatType() { }
@@ -56,7 +64,7 @@ namespace MemoryManagement {
 	BoolType::~BoolType() { }
 
 	int BoolType::size() {
-		return sizeof(float);
+		return sizeof(bool);
 	}
 
 	Member::Member(std::string name, Type* type) {

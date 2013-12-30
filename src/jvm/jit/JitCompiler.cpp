@@ -179,6 +179,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case if_icmpge:
 			case if_icmpeq:
 			case if_icmple:
+			case if_icmplt:
 			case if_icmpgt:
 			case if_icmpne:
 				v2 = values.top(); values.pop(); // b
@@ -190,8 +191,9 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				labels.insert(branch1);
 				oper = JGE;
 				if (opcode == if_icmple) oper = JLE;
+				else if (opcode == if_icmplt) oper = JLT;
 				else if (opcode == if_icmpgt) oper = JG;
-				else if (opcode == if_icmpgt) oper = JEQ;
+				else if (opcode == if_icmpeq) oper = JEQ;
 				else if (opcode == if_icmpne) oper = JNE;
 				procedure.jit_regular_operation(oper, v1,v2, jit_label(branch1));
 				index += 3;
@@ -209,11 +211,15 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case ifle:
 			case iflt:
 			case ifge:
+			case ifeq:
+			case ifgt:
 				v1 = values.top(); values.pop();
 				oper = JNE;
 				if (opcode == ifle) oper = JLE;
 				else if (opcode == ifge) oper = JGE;
 				else if (opcode == iflt) oper = JLT;
+				else if (opcode == ifeq) oper = JEQ;
+				else if (opcode == ifeq) oper = JG;
 
 				branch1 = (char) code->code[index + 1];
 				branch2 = (unsigned char)code->code[index + 2];

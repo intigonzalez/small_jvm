@@ -124,5 +124,55 @@ i		 */
 
 		return 0;
 	}
+
+	public static int test7() {
+		/* 
+		 * Description: 
+		 * Create char array and manipulate it
+		 */ 
+		char[] a = new char[123456];
+		char c = 'a';
+		for (int i = 0; i < a.length; ++i) {
+			a[i] = c;
+			c ++;
+			if (c > 'z')
+				c = 'a';
+		}
+		int count = 0; // numer of a
+		for (int i = 0; i < a.length ; i++) {
+			if (a[i] == 'a')
+				count++;
+		}
+		return count;
+	}
+
+	public static int test8() {
+		/* 
+		 * Description: 
+		 * Array of booleans
+		 */
+		boolean[] b = new boolean[4500];
+		for (int i = 0; i < b.length ; i++) {
+			b[i] = i % 13 == 5;
+		}
+		int count = 0;
+		for (int i = 0; i < b.length; i++)
+			count += (b[i]?1:0);
+		return count;
+	}
+
+	public static int test9() {
+		/* 
+		 * Description 
+		 * Array of bytes
+		 */
+		byte[] b = new byte[45678];
+		for (int i = 0; i < b.length ; i++)
+			b[i] = (byte)(i % 125);
+		int m = 1;
+		for (int i = 0 ; i < b.length; i++)
+			m *= b[i];
+		return m;
+	}
 }
 
