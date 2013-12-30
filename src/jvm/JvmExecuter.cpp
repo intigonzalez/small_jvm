@@ -99,6 +99,12 @@ Type* JvmExecuter::getType(string javaDescription)
 	case 'J':
 		t = rawTypes["long"]; // FIXME
 		break;
+	case 'F':
+		t = rawTypes["float"]; // FIXME
+		break;
+	case 'Z':
+		t = rawTypes["bool"]; // FIXME
+		break;
 	case 'L':
 		javaDescription = javaDescription.substr(1,
 		                javaDescription.size() - 2);

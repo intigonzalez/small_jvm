@@ -35,16 +35,28 @@ namespace MemoryManagement {
 		v->visit(this);
 	}
 
-	IntType::IntType() :
-			Type("int") {
+	IntType::IntType() : Type("int") { }
 
-	}
-
-	IntType::~IntType() {
-	}
+	IntType::~IntType() { }
 
 	int IntType::size() {
-		return sizeof(int);
+		return sizeof(int32_t);
+	}
+
+	FloatType::FloatType() : Type("float") { }
+
+	FloatType::~FloatType() { }
+
+	int FloatType::size() {
+		return sizeof(float);
+	}
+
+	BoolType::BoolType() : Type("bool") { }
+
+	BoolType::~BoolType() { }
+
+	int BoolType::size() {
+		return sizeof(float);
 	}
 
 	Member::Member(std::string name, Type* type) {
@@ -113,8 +125,7 @@ namespace MemoryManagement {
 		return _members.size();
 	}
 
-	ArrayType::ArrayType(std::string name, Type* base) :
-			Type(name) {
+	ArrayType::ArrayType(std::string name, Type* base) : Type(name) {
 		_baseType = base;
 		_array = true;
 	}
@@ -127,28 +138,21 @@ namespace MemoryManagement {
 		return sizeof(Objeto); // This is going to be used in Class
 	}
 
-	JavaCharType::JavaCharType() :
-			Type("char") {
-	}
+	JavaCharType::JavaCharType() : Type("char") { }
 
 	int JavaCharType::size() {
-		return sizeof(unsigned short);
+		return sizeof(uint16_t);
 	}
 
-	JavaCharType::~JavaCharType() {
+	JavaCharType::~JavaCharType() { }
 
-	}
-	LongType::LongType() :
-			Type("long") {
-	}
+	LongType::LongType() : Type("long") { }
 
 	int LongType::size() {
 		return sizeof(long long);
 	}
 
-	LongType::~LongType() {
-
-	}
+	LongType::~LongType() { }
 
 }
 

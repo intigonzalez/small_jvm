@@ -22,48 +22,62 @@ namespace MemoryManagement {
 	class TypeVisitor;
 
 	class Type {
-		protected:
-			std::string _name;
-			bool _rawType;
-			bool _array;
-		public:
-			Type(std::string name);
-			virtual ~Type();
-			virtual int size() = 0;
+	protected:
+		std::string _name;
+		bool _rawType;
+		bool _array;
+	public:
+		Type(std::string name);
+		virtual ~Type();
+		virtual int size() = 0;
 
-			bool IsRaw();
+		bool IsRaw();
 
-			void accept(TypeVisitor * v);
+		void accept(TypeVisitor * v);
 
-			bool isArray() const {
-				return _array;
-			}
+		bool isArray() const {
+			return _array;
+		}
 
-			std::string getName() const {
-				return _name;
-			}
+		std::string getName() const {
+			return _name;
+		}
 	};
 
 	class IntType: public Type {
-		public:
-			IntType();
-			virtual int size();
-			virtual ~IntType();
+	public:
+		IntType();
+		virtual int size();
+		virtual ~IntType();
+	};
+
+	class FloatType: public Type {
+	public:
+		FloatType();
+		virtual int size();
+		virtual ~FloatType();
+	};
+
+	class BoolType: public Type {
+	public:
+		BoolType();
+		virtual int size();
+		virtual ~BoolType();
 	};
 
 	class JavaCharType : public Type {
-		public:
-			JavaCharType();
-			virtual int size();
-			virtual ~JavaCharType();
+	public:
+		JavaCharType();
+		virtual int size();
+		virtual ~JavaCharType();
 	};
 
 	class LongType : public Type {
-			public:
-			LongType();
-				virtual int size();
-				virtual ~LongType();
-		};
+		public:
+		LongType();
+			virtual int size();
+			virtual ~LongType();
+	};
 
 	class Member {
 		private:
