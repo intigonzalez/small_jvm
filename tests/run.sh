@@ -27,7 +27,7 @@ for gtc in * ; do
 				if diff $e $o > /dev/null ; then
 					echo -e "\t\t$t -> \e[1;32mSUCCESS\e[0m"
 				else
-					echo -e "\t\t:$t -> \e[1;31mFAIL\e[0m"
+					echo -e "\t\t$t -> \e[1;31mFAIL\e[0m"
 				fi
 			done	
 		done

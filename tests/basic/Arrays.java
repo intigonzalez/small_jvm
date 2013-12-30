@@ -51,7 +51,7 @@ public class Arrays {
 			return 0;
 	}
 
-	public static int test3() {
+	public static int test2() {
 		/* 
 		 * Description:
 		 * La criba the 
@@ -73,7 +73,7 @@ public class Arrays {
 		return mul;
 	}
 
-	public static int test4() {
+	public static int test3() {
 		/* 
 		 * Description:
 		 * Playing with references
@@ -92,7 +92,7 @@ public class Arrays {
 		return -sum;
 	}
 
-	public static int test5() {
+	public static int test4() {
 		/* 
 		 * Description:
 		 * Playing with references
@@ -113,7 +113,7 @@ i		 */
 	}
 
 
-	public static int test6() {
+	public static int test5() {
 		/* 
 		 * Description: 
 		 * Calculate Triangle of Pascal and then Comb(12,5)
@@ -125,7 +125,7 @@ i		 */
 		return 0;
 	}
 
-	public static int test7() {
+	public static int test6() {
 		/* 
 		 * Description: 
 		 * Create char array and manipulate it
@@ -146,7 +146,7 @@ i		 */
 		return count;
 	}
 
-	public static int test8() {
+	public static int test7() {
 		/* 
 		 * Description: 
 		 * Array of booleans
@@ -161,7 +161,7 @@ i		 */
 		return count;
 	}
 
-	public static int test9() {
+	public static int test8() {
 		/* 
 		 * Description 
 		 * Array of bytes

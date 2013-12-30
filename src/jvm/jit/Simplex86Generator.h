@@ -257,22 +257,37 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	std::vector<vertex_t> vec;
 	int n = boost::num_vertices(routine.g);
 	bool* mark = new bool[n];
-	for (int i = 0 ; i < n ; ++i) mark[i] = false;
-	mark[0] = true;
+	for (int i = 0 ; i < n ; ++i)
+		mark[i] = false;
 	vec.push_back(0);
+	boost::graph_traits<ControlFlowGraph>::out_edge_iterator ai,ai_end;
+	std::vector<vertex_t>::iterator it;
 	while (!vec.empty()) {
-		boost::graph_traits<ControlFlowGraph>::out_edge_iterator ai,ai_end;
-		vertex_t v0 = vec.back(); vec.pop_back();
+		vertex_t v0 = vec.front(); vec.erase(vec.begin());
+		mark[v0] = true;
 		LOG_DBG("Compiling Block", v0);
 		BasicBlock* bb = routine.g[v0];
 		generateBasicBlock(variables, bb);
-//		int idx = 0;
 		for (tie(ai, ai_end) = boost::out_edges(v0, routine.g) ; ai != ai_end ; ++ai) {
-			if (!mark[(*ai).m_target]) {
-				vec.push_back((*ai).m_target);
-				mark[(*ai).m_target] = true;
+			vertex_t v1 = (*ai).m_target;
+			if (!mark[v1]) {
+				bool isJmp = routine.endWithJmpTo(v0, v1);
+				it =std::find(vec.begin(), vec.end(), v1);
+				if (isJmp) {
+					// it is a jump, no priority
+					if (it == vec.end())
+						vec.push_back(v1);
+				}
+				else {
+					// it is coming now, needs priority
+					if (it != vec.end()) {
+						// it was inserted before but with low priority
+						vec.erase(it);
+					}
+					it = vec.begin();
+					vec.insert(it, v1);
+				}
 			}
-//			idx ++;
 		}
 	}
 

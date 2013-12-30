@@ -130,9 +130,17 @@ struct Routine {
 	 */
 	int getTempId();
 
-
-
 	void buildControlFlowGraph();
+	bool endWithJmpTo(vertex_t src, vertex_t dst) {
+		BasicBlock* bbSrc = g[src];
+		if (bbSrc->q[bbSrc->q.size()-1].res.meta.scope == Label) {
+			// maybe
+			int v = bbSrc->q[bbSrc->q.size()-1].res.value;
+			BasicBlock* bbDst = g[dst];
+			return (bbDst->q[0].label == v);
+		}
+		return false;
+	}
 
 	/**
 	 * Debug
