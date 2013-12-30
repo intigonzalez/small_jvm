@@ -16,6 +16,10 @@ void initDownCalls()
 	rawTypes[t->getName()] = t;
 	t = new LongType();
 	rawTypes[t->getName()] = t;
+	t = new FloatType();
+	rawTypes[t->getName()] = t;
+	t = new BoolType();
+	rawTypes[t->getName()] = t;
 }
 
 Objeto newRawArray(RawArrayTypes type, int length)
