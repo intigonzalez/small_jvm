@@ -11,13 +11,13 @@ for gtc in * ; do
 	if [ -d "$gtc" ] ; then
 		echo "Testing cases within $gtc"
 
+		e=`mktemp`
+		o=`mktemp`
 		# iterate over test cases (is a class with many tests inside)
 		for tc_file in $gtc/*.class ; do
 			tcOld="${tc_file/%.class}"
 			tc="${tcOld/\//.}"
 
-			e=`mktemp`
-			o=`mktemp`
 			# iterate over test (needs the help of java) 
 			for t in `java ExpectedResultCreator $tc -l` ; do
 				java ExpectedResultCreator "$tc" $t > "$e"
@@ -27,9 +27,9 @@ for gtc in * ; do
 				else
 					echo -e "${tc}:$t -> \e[1;31mFAIL\e[0m"
 				fi
-			done
-			rm $e $o
-			rm *.bin *.asm	
+			done	
 		done
+		rm $e $o
+		rm *.bin *.asm 
 	fi
 done
