@@ -408,6 +408,13 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				}
 				index += 3;
 				break;
+			case op_pop:
+				if (!values.empty())
+					values.pop();
+				else
+					throw(std::runtime_error("trying to execute pop opcode in empty stack"));
+				index++;
+				break;
 			case op_return:
 				procedure.jit_return_void();
 				index++;
