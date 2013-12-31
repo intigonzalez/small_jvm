@@ -31,24 +31,9 @@ std::string Variable::toString() {
 	return value.toString();
 }
 
-void Variable::setSingleLocation() {
-	(*this) = 0;
-	selfStored = true;
-	needToBeSaved = false;
-}
-
 void Variable::setRegisterLocation(CPURegister* r) {
 	(*this) = r;
 	selfStored = false;
-	needToBeSaved = true;
-}
-
-void Variable::deattach(CPURegister* r) {
-	(*this)-=r;
-}
-
-void Variable::attach(CPURegister* r) {
-	(*this)+=r;
 }
 
 Variable* Vars::get(const jit_value& value) const {
@@ -91,7 +76,7 @@ void CPURegister::freeRegister(Function fn) {
 
 void CPURegister::setSingleReference(Variable* v) {
 	locations.removeAll1(this);
-	attach(v);
+	(*v) += this;
 }
 
 CPURegister* Simplex86Generator::getRegister(const jit_value& op2, const Vars& vars, ulong fixed, bool generateMov) {
@@ -216,30 +201,39 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		int int_value;
 		void * pointer;
 
+		void deattach(CPURegister* r);
 		switch (ope) {
 		case CRAZY_OP:
 			reg = getRegister(op1, variables);
+//			v = variables.get(op1);
+//			if (v && !v->inRegister(reg)) {
+//				(*v) = reg;
+//				v->selfStored = true;
+//			}
+
 			v = variables.get(res);
 			// FIXME: this seems to be redundant
 			functor.S() << "mov " << v->toString() << "," << reg->name << '\n';
-			v->setRegisterLocation(reg);
-			reg->setSingleReference(v); // FIXME: I need many to many
+
+//			v->setRegisterLocation(reg);
+//			reg->setSingleReference(v); // FIXME: I need many to many
 			continue;
 		case ASSIGN:
 			if (op1.meta.scope == Constant) {
 				v = variables.get(res);
 				functor.S() << "mov dword " << v->toString() << "," << op1.toString()
 						<< '\n';
-				v->setSingleLocation();
+				(*v) = 0;
+//				v->setSingleLocation();
 			} else {
 				// variable
 				// find empty register
 				reg = getRegister(op1, variables);
 				v = variables.get(res);
 				functor.S() << "mov " << v->toString() << "," << reg->name << '\n';
-				v->setSingleLocation();
-				reg->setSingleReference(v);
+				(*v) = reg;
 			}
+			v->selfStored = true;
 			break;
 		case PLUS:
 		case MUL:
@@ -249,21 +243,37 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			if (op1.meta.scope != Constant || op2.meta.scope != Constant) {
 				// find register for op1 and copy it if necessary
 				reg = getRegister(op1, variables);
+				// FIXME: Ok, something is wrong. Look at this case
+				// Let's say that op1 was in a register and the value has
+				// not been saved to the var. the, the value will never be
+				// saved because. Even more, it will map a wrong storage
+				// location to the var. I am trying to fix it with the
+				// sentence below
+				reg->freeRegister(functor);
 			} else {
 				/* both are constants */
+				assert(false);
 			}
 			functor.S() << operatorToInstruction[ope] << reg->name << ","
 					<< getData(op2, variables) << '\n';
 			v = variables.get(res);
-			v->setRegisterLocation(reg);
-			reg->setSingleReference(v);
+			(*v) = reg;
+			v->selfStored = false;
 			break;
 		case DIV:
 		case REM:
 			if (op1.meta.scope != Constant || op2.meta.scope != Constant) {
 				reg = getRegistersForDiv(op1, variables);
+				// FIXME: Ok, something is wrong. Look at this case
+				// Let's say that op1 was in a register and the value has
+				// not been saved to the var. the, the value will never be
+				// saved because. Even more, it will map a wrong storage
+				// location to the var. I am trying to fix it with the
+				// sentence below
+				reg->freeRegister(functor);
 			} else {
 				/* both are constants */
+				assert(false);
 			}
 			functor.S() << "xor edx, edx" << '\n';
 			tmpStr = getDataForDiv(op2, variables);
@@ -272,78 +282,8 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 				reg = registers[3];
 
 			v = variables.get(res);
-			v->setRegisterLocation(reg);
-			reg->setSingleReference(v);
-			break;
-		case GET_ARRAY_POS:
-			used.reset();
-			// get register for array base
-			v = variables.get(op1);
-			reg = getRegister(op1, variables);
-			used.set(reg->id);
-			v->setRegisterLocation(reg);
-			reg->setSingleReference(v);
-			// get a different register for index
-			v = variables.get(op2);
-			if (v) {
-				reg1 = getRegister(op2, variables, used.to_ulong(),true);
-				used.set(reg1->id);
-				v->setRegisterLocation(reg1);
-				reg1->setSingleReference(v);
-				int_value = -1;
-			} else {
-				int_value = (op2.value << 2) + 12; // FIXME : size of the array element
-			}
-			// get a different register to store the values
-			reg2 = getRegister(res, variables, used.to_ulong(),false);
-			v = variables.get(res);
-			v->setRegisterLocation(reg2);
-			reg2->setSingleReference(v);
-			if (int_value == -1)
-				functor.S() << "mov " << reg2->name << ",[" << reg->name << "+4*"
-						<< reg1->name << "+12]" << endl;
-			else
-				functor.S() << "mov " << reg2->name << ",[" << reg->name << "+"
-						<< int_value << "]" << endl;
-
-			break;
-		case SET_ARRAY_POS:
-			// read from array and store in var
-			used.reset();
-			// get register for array base
-			v = variables.get(res);
-			reg = getRegister(res, variables);
-			used.set(reg->id);
-			v->setRegisterLocation(reg);
-			reg->setSingleReference(v);
-			// get a different register for index
-			v = variables.get(op2);
-			if (v) {
-				reg1 = getRegister(op2, variables, used.to_ulong(),true);
-				used.set(reg1->id);
-				v->setRegisterLocation(reg1);
-				reg1->setSingleReference(v);
-				int_value = -1;
-			} else {
-				int_value = (op2.value << 2) + 12; // FIXME : size of the array element
-			}
-			// get a different register to store the values
-			v = variables.get(op1);
-			if (v) {
-				reg2 = getRegister(op1, variables, used.to_ulong(),true);
-				v->setRegisterLocation(reg2);
-				reg2->setSingleReference(v);
-			}
-			tmpStr = getData(op1, variables);
-			if (int_value == -1)
-				functor.S() << "mov dword " << "[" << reg->name << "+4*" << reg1->name
-						<< "+12]," << tmpStr << endl;
-			else
-				functor.S() << "mov dword " << "[" << reg->name << "+" << int_value
-						<< "]," << tmpStr << endl;
-
-			//v = variables.get(op2);
-			//ofile << "mov " << v->toString() << "," << reg2->name << endl;
+			(*v) = reg;
+			v->selfStored = false;
 			break;
 		case GOTO:
 			// goto
@@ -361,11 +301,17 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		case JG:
 		case JNE:
 		case JEQ:
-			if (op1.meta.scope != Constant || op2.meta.scope != Constant) {
+			if (op1.meta.scope != Constant) {
 				// find register for op1 and copy it if necessary
 				reg = getRegister(op1, variables);
+				v = variables.get(op1);
+				if (v && !v->inRegister(reg)) {
+					(*v)+=reg;
+					v->selfStored = true;
+				}
 			} else {
 				/* both are constants */
+				assert(false);
 			}
 			functor.S() << "cmp " << reg->name << ","
 					<< getData(op2, variables) << '\n';
@@ -387,10 +333,12 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			functor.S() << "call dword " << pointer << '\n';
 			if (op2.value > 0)
 				functor.S() << "add esp, " << op2.value*4 << '\n'; // FIXME, number of parameters
-			reg = registers[0];
-			v = variables.get(res);
-			v->setRegisterLocation(reg);
-			reg->setSingleReference(v);
+			if (res.meta.type != Void) {
+				reg = registers[0];
+				v = variables.get(res);
+				(*v) = reg;
+				v->selfStored = false;
+			}
 			break;
 		case CALL_STATIC:
 			// FIXME, take into account the return type
@@ -405,10 +353,12 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			if (op2.value > 0)
 				functor.S() << "add esp, " << op2.value*4 << '\n'; // FIXME, number of parameters
 
-			reg = registers[0];
-			v = variables.get(res);
-			v->setRegisterLocation(reg);
-			reg->setSingleReference(v);
+			if (res.meta.type != Void) {
+				reg = registers[0];
+				v = variables.get(res);
+				(*v) = reg;
+				v->selfStored = false;
+			}
 			break;
 		case MOV_FROM_ADDR:
 			used.reset();
@@ -417,15 +367,14 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			reg = getRegister(res,variables, used.to_ulong(), false); // the result will be here
 			functor.S() << "mov " <<  reg->name << ",[" << reg1->name << "]\n";
 			v = variables.get(res);
-			v->setRegisterLocation(reg);
-			reg->setSingleReference(v);
+			(*v) = reg;
+			v->selfStored = false;
 			break;
 		case MOV_TO_ADDR:
 			used.reset();
 			reg1 = getRegister(op1, variables); // the address to dereference
 			used.set(reg1->id);
 			reg = getRegister(op2, variables, used.to_ulong(), true);
-//			reg = getRegister(res,variables); // the result will be here
 			functor.S() << "mov dword [" <<  reg1->name << "]," << reg->name << "\n";
 			break;
 		case OP_RETURN:

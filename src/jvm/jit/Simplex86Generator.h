@@ -53,7 +53,6 @@ public:
 	value_type type;
 	value_scope scope;
 	int n;
-	bool needToBeSaved;
 	int offsetInStack;
 
 	bool selfStored;
@@ -62,7 +61,6 @@ public:
 		type = Integer;
 		scope = s;
 		n = ind;
-		needToBeSaved = true;
 		id = n*100000 + scope;
 		offsetInStack = 0;
 		selfStored = (scope != Temporal); // fixme: wrong conditions. It should be "if it is a parameter"
@@ -89,8 +87,6 @@ public:
 		return *this;
 	}
 
-	void setSingleLocation();
-
 	void setRegisterLocation(CPURegister* r);
 
 	bool inVar() {
@@ -112,10 +108,6 @@ public:
 	}
 
 	std::string toString();
-
-	void deattach(CPURegister* r);
-
-	void attach(CPURegister* r);
 };
 
 class Vars {
@@ -186,14 +178,6 @@ public:
 	}
 
 	void setSingleReference(Variable* v);
-
-	void deattach(Variable* v) {
-		locations.remove(this, v);
-	}
-
-	void attach(Variable* v) {
-		(*v) += this;
-	}
 };
 
 class Simplex86Generator {
