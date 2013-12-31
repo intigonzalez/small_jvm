@@ -34,6 +34,7 @@ void* JitCompiler::compile(ClassFile* cf, MethodInfo* method){
 	// build control-flow graph
 	procedure.buildControlFlowGraph();
 	procedure.print();
+
 	Simplex86Generator generator;
 	void* addr = generator.generate(procedure, codeSection);
 	return addr;
@@ -173,7 +174,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					break;
 			case bipush:
 				values.push(jit_constant((int) code->code[index + 1]));
-//					push((int) code->code[index + 1]);
 				index += 2;
 				break;
 			case if_icmpge:
@@ -198,15 +198,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				procedure.jit_regular_operation(oper, v1,v2, jit_label(branch1));
 				index += 3;
 				break;
-//				case ifeq:
-//					a = popI();
-//					if (!a) {
-//						branch1 = (char) code->code[index + 1];
-//						branch2 = (unsigned char)code->code[index + 2];
-//						index += (branch1 << 8) | branch2;
-//					} else
-//						index += 3;
-//					break;
 			case ifne:
 			case ifle:
 			case iflt:

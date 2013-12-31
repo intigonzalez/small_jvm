@@ -41,7 +41,7 @@ void Variable::setSingleLocation() {
 	needToBeSaved = false;
 }
 
-void Variable::setRegisterLocation(x86Register* r) {
+void Variable::setRegisterLocation(CPURegister* r) {
 	for (auto& r : valueInR)
 		r->deattachSimple(this);
 	valueInR.clear();
@@ -59,12 +59,12 @@ void Variable::markAsForgetten() {
 	valueIn.clear();
 }
 
-void Variable::deattach(x86Register* r) {
+void Variable::deattach(CPURegister* r) {
 	valueInR.erase(r);
 	r->deattachSimple(this);
 }
 
-void Variable::attach(x86Register* r) {
+void Variable::attach(CPURegister* r) {
 	valueInR.insert(r);
 	r->attachSimple(this);
 }
@@ -92,13 +92,12 @@ Variable* Vars::get(const jit_value& value) const {
 }
 
 template <class Function>
-void x86Register::freeRegister(Function fn) {
+void CPURegister::freeRegister(Function fn) {
 	// save the register in every variable it knows
 	for (auto& v : valueOf) {
 		if (!v->inVar(v) && v->inRegister(this)) {
 			v->deattachSimple(this);
 			fn(v->toString(), name);
-//			ofile << "mov " << v->toString() << "," << name << '\n';
 			v->attach(v);
 		}
 		else if (v->inVar(v) && v->inRegister(this)) {
@@ -108,14 +107,14 @@ void x86Register::freeRegister(Function fn) {
 	valueOf.clear();
 }
 
-void x86Register::setSingleReference(Variable* v) {
+void CPURegister::setSingleReference(Variable* v) {
 	for (auto& v : valueOf)
 		v->deattachSimple(this);
 	valueOf.clear();
 	attach(v);
 }
 
-x86Register* Simplex86Generator::getRegister(const jit_value& op2, const Vars& vars, ulong fixed, bool generateMov) {
+CPURegister* Simplex86Generator::getRegister(const jit_value& op2, const Vars& vars, ulong fixed, bool generateMov) {
 	Variable* v = vars.get(op2);
 	if (v && v->inRegister())  {
 		// the value is in a register
@@ -147,7 +146,7 @@ x86Register* Simplex86Generator::getRegister(const jit_value& op2, const Vars& v
 	return registers[idx];
 }
 
-x86Register* Simplex86Generator::getRegister(const jit_value& operand, const Vars& vars) {
+CPURegister* Simplex86Generator::getRegister(const jit_value& operand, const Vars& vars) {
 	return getRegister(operand, vars, 0, true);
 }
 
@@ -161,7 +160,7 @@ std::string Simplex86Generator::getData(const jit_value& op2, const Vars& vars) 
 	return op2.toString();
 }
 
-x86Register* Simplex86Generator::getRegistersForDiv(const jit_value& operand, const Vars& vars) {
+CPURegister* Simplex86Generator::getRegistersForDiv(const jit_value& operand, const Vars& vars) {
 	Variable* v = vars.get(operand);
 	if (v && v->inRegister())  {
 		// the value is in a register
@@ -188,13 +187,27 @@ std::string Simplex86Generator::getDataForDiv(const jit_value& operand, const Va
 	return getData(operand, vars);
 }
 
+static map<int, string> operatorToInstruction;
+
 Simplex86Generator::Simplex86Generator() {
-	registers.push_back(new x86Register("eax",0));
-	registers.push_back(new x86Register("ebx",1));
-	registers.push_back(new x86Register("ecx",2));
-	registers.push_back(new x86Register("edx",3));
-	registers.push_back(new x86Register("esi",4));
-	registers.push_back(new x86Register("edi",5));
+	registers.push_back(new CPURegister("eax",0));
+	registers.push_back(new CPURegister("ebx",1));
+	registers.push_back(new CPURegister("ecx",2));
+	registers.push_back(new CPURegister("edx",3));
+	registers.push_back(new CPURegister("esi",4));
+	registers.push_back(new CPURegister("edi",5));
+
+	operatorToInstruction[PLUS] = "add ";
+	operatorToInstruction[SUB] = "sub ";
+	operatorToInstruction[MUL] = "imul ";
+	operatorToInstruction[SHL] = "shl ";
+	operatorToInstruction[SHR] = "shr ";
+	operatorToInstruction[JGE] = "jge ";
+	operatorToInstruction[JG] = "jg ";
+	operatorToInstruction[JLE] = "jle ";
+	operatorToInstruction[JLT] = "jl ";
+	operatorToInstruction[JEQ] = "jz ";
+	operatorToInstruction[JNE] = "jne ";
 }
 
 Simplex86Generator::~Simplex86Generator() {
@@ -205,12 +218,6 @@ Simplex86Generator::~Simplex86Generator() {
 void Simplex86Generator::generateBasicBlock(const Vars& variables,
 	BasicBlock* bb)
 {
-	map<int, string> operatorToInstruction;
-	operatorToInstruction[PLUS] = "add ";
-	operatorToInstruction[SUB] = "sub ";
-	operatorToInstruction[MUL] = "imul ";
-	operatorToInstruction[SHL] = "shl ";
-	operatorToInstruction[SHR] = "shr ";
 	string tmpStr;
 	std::bitset<6> used;
 
@@ -223,9 +230,9 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		jit_value op2 = bb->q[i].op2;
 		jit_value res = bb->q[i].res;
 		Variable* v;
-		x86Register* reg;
-		x86Register* reg1;
-		x86Register* reg2;
+		CPURegister* reg;
+		CPURegister* reg1;
+		CPURegister* reg2;
 		int int_value;
 		void * pointer;
 
@@ -382,14 +389,8 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			}
 			functor.S() << "cmp " << reg->name << ","
 					<< getData(op2, variables) << '\n';
-			tmpStr = "jge ";
-			if (ope == JLE) tmpStr = "jle ";
-			else if (ope == JLT) tmpStr = "jl ";
-			else if (ope == JG) tmpStr = "jg ";
-			else if (ope == JNE) tmpStr = "jne ";
-			else if (ope == JEQ) tmpStr = "jz ";
 
-			functor.S() << tmpStr << res.toString() << '\n';
+			functor.S() << operatorToInstruction[ope] << res.toString() << '\n';
 			break;
 		case PUSH_ARG:
 			if (op1.meta.type == Integer || op1.meta.type == ObjRef || op1.meta.type == ArrRef) {

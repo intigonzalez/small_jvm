@@ -67,8 +67,9 @@ public class StaticCalls {
 	public static int test5() {
 		/* 
 		 * Description:
-		 * call function in loop
-i		 */
+		 * Call function in loop
+		 * VERY GOOD FOR PROFILING	
+		 */
 		int s = 0;
 		for (int i = 0 ; i < 100000000 ; i++) {
 			s = sum(s,i);

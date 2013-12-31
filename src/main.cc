@@ -19,6 +19,7 @@ using namespace std;
 #include "jvm/JvmJit.h"
 #include "jvm/down_calls.h"
 
+#include "utilities/ManyToMany.h"
 
 using namespace jvm;
 
@@ -26,6 +27,31 @@ extern int optind;
 
 int main(int argc, char* argv[])
 {
+//	M2MRelationship<int, int> aaa;
+//	aaa.add(1,222);
+//	aaa.add(1,333);
+//	aaa.add(1,444);
+//	aaa.add(2,444);
+//	aaa.add(1,444);
+//	aaa.add(1,555);
+//	aaa.add(2,555);
+//	aaa.add(3,555);
+//	aaa.add(4,555);
+//	aaa.add(1,666);
+//	for (M2MRelationship<int,int>::iterator2 it = aaa.begin1(1),
+//			itEnd = aaa.end1(1) ; it !=itEnd ;
+//			++it){
+//		int x = (*it);
+//		cout << x << endl;
+//	}
+//
+//	for (M2MRelationship<int,int>::iterator1 it = aaa.begin2(555),
+//			itEnd = aaa.end2(555) ; it !=itEnd ;
+//			++it){
+//		int x = (*it);
+//		cout << x << endl;
+//	}
+
 	if (argc == 1) {
 		cerr << "Usage: "<< argv[0] <<" [-t] class_name [classes_paths]*" << endl;
 		return -1;

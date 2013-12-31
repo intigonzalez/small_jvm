@@ -30,7 +30,7 @@
 
 namespace jit {
 
-class x86Register;
+class CPURegister;
 
 class Identifiable {
 public:
@@ -46,7 +46,7 @@ struct my_compare {
 class Variable : public Identifiable {
 private:
 	std::set< Variable*, my_compare > valueIn; // set of variables where the value of this variables is.
-	std::set< x86Register*, my_compare > valueInR; // set of registers where the variable is.
+	std::set< CPURegister*, my_compare > valueInR; // set of registers where the variable is.
 public:
 	value_type type;
 	value_scope scope;
@@ -66,13 +66,13 @@ public:
 
 	void setSingleLocation();
 
-	void setRegisterLocation(x86Register* r);
+	void setRegisterLocation(CPURegister* r);
 
 	bool inVar(Variable* var) {
 		return this->valueIn.find(var) != var->valueIn.end();
 	}
 
-	bool inRegister(x86Register* r) {
+	bool inRegister(CPURegister* r) {
 		return this->valueInR.find(r) != this->valueInR.end();
 	}
 
@@ -80,7 +80,7 @@ public:
 		return !this->valueInR.empty();
 	}
 
-	x86Register* getRegisterWithValue() {
+	CPURegister* getRegisterWithValue() {
 		if (inRegister())
 			return (*this->valueInR.begin());
 		return 0;
@@ -90,22 +90,22 @@ public:
 
 	std::string toString();
 
-	void deattachSimple(x86Register* r) {
+	void deattachSimple(CPURegister* r) {
 		valueInR.erase(r);
 	}
 
-	void deattach(x86Register* r);
+	void deattach(CPURegister* r);
 
 	void attach(Variable* v) {
 		valueIn.insert(v);
 		//v->attachSimple(this);
 	}
 
-	void attachSimple(x86Register* r) {
+	void attachSimple(CPURegister* r) {
 		valueInR.insert(r);
 	}
 
-	void attach(x86Register* r);
+	void attach(CPURegister* r);
 };
 
 class Vars {
@@ -149,14 +149,14 @@ public:
 	}
 };
 
-class x86Register : public Identifiable {
+class CPURegister : public Identifiable {
 private:
 	std::set< Variable* , my_compare> valueOf; // set of variables whose values are in this register.
 public:
 	value_type type;
 	std::string name;
 
-	x86Register(const char* name, int number) {
+	CPURegister(const char* name, int number) {
 		this->name = name;
 		this->id = number;
 		type = Integer;
@@ -203,19 +203,18 @@ public:
 	template <class CodeSectionManager>
 	void* generate(Routine& routine, CodeSectionManager* manager);
 
-	std::vector<int> stubs;
 	std::vector<void*> stubs2;
 
 private:
-	std::vector<x86Register*> registers;
+	std::vector<CPURegister*> registers;
 	ReleaseX86RegisterFunctor functor;
 
 	void generateBasicBlock(const Vars& variables, BasicBlock* bb);
 
-	x86Register* getRegister(const jit_value& op2, const Vars& vars, ulong fixed, bool generateMov);
-	x86Register* getRegister(const jit_value& operand, const Vars& vars);
+	CPURegister* getRegister(const jit_value& op2, const Vars& vars, ulong fixed, bool generateMov);
+	CPURegister* getRegister(const jit_value& operand, const Vars& vars);
 	std::string getData(const jit_value& op2, const Vars& vars);
-	x86Register* getRegistersForDiv(const jit_value& operand, const Vars& vars);
+	CPURegister* getRegistersForDiv(const jit_value& operand, const Vars& vars);
 	std::string getDataForDiv(const jit_value& operand, const Vars& vars);
 };
 
@@ -230,7 +229,6 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 		variables.addVariable(q.res);
 	}
 	// init memory buffer
-
 	void *buf = manager->nextAddress();
 	// open file
 	TemporaryFile file(".",".asm");
@@ -292,13 +290,7 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	}
 
 	// add stub methods
-	void *pointer = (void*)&getMethodAddressAndPatch;
-	for (std::vector<int>::iterator it = stubs.begin(), itEnd = stubs.end(); it != itEnd ; ++it) {
-		int id = *it;
-		functor.S() << "LabelStub" << id << ": push dword " << id << '\n';
-		functor.S() << "jmp " << pointer << '\n';
-	}
-	pointer = (void*)&loadClassCompileMethodAndPath;
+	void* pointer = (void*)&loadClassCompileMethodAndPath;
 	for (std::vector<void*>::iterator it = stubs2.begin(), itEnd = stubs2.end(); it != itEnd ; ++it) {
 		void* address = *it;
 		int n = std::distance(stubs2.begin(),it) + 100000;

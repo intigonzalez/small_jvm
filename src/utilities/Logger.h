@@ -25,6 +25,7 @@ private:
 	void print_impl()
 	{
 		(*stream) << std::endl;
+//		(*stream).flush();
 	}
 
 
@@ -32,6 +33,7 @@ private:
 	void print_impl(First parm1, Rest...parm)
 	{
 	    (*stream) << parm1;
+//	    (*stream).flush();
 	    print_impl(parm...);
 	}
 public:
@@ -41,11 +43,12 @@ public:
 	template<LogLevel level, typename First, typename...Params >
 	void log(First param1, Params...params) {
 		(*stream) << "LOG: <" << texts[level] << "> - ";
+//		(*stream).flush();
 		print_impl(param1, params...);
 	}
 };
 
-static Logger log_inst( "vm2 execution.log" );
+extern Logger log_inst;
 
 #define LOG_LEVEL_ON
 
