@@ -37,6 +37,27 @@ public:
 		});
 	}
 
+	bool contains(T t, H h) {
+		type_it i = std::find_if(l.begin(), l.end(), [t,h](std::pair<T,H> p) {
+			return p.first == t && p.second == h;
+		});
+		return i != l.end();
+	}
+
+	bool contains2(H h) {
+		type_it i = std::find_if(l.begin(), l.end(), [h](std::pair<T,H> p) {
+			return p.second == h;
+		});
+		return i != l.end();
+	}
+
+	unsigned degree1(T t) {
+		unsigned n = std::count_if(l.begin(), l.end(), [t](std::pair<T,H> p) {
+			return p.first == t;
+		});
+		return n;
+	}
+
 	void removeAll1(T t) {
 		l.remove_if([t](std::pair<T,H> p) {
 			return p.first == t; 
@@ -97,7 +118,7 @@ public:
 		return *this;
 	}
 
-	H& operator*() {
+	T& operator*() {
 		return (*l).first;
 	}
 

@@ -18,6 +18,7 @@
 #include <map>
 #include <vector>
 #include <iostream>
+#include <algorithm>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -48,8 +49,6 @@ struct my_compare {
 class Variable : public Identifiable {
 private:
 	M2MRelationship<CPURegister*, Variable*>& locations;
-//	std::set< Variable*, my_compare > valueIn; // set of variables where the value of this variables is.
-	std::set< CPURegister*, my_compare > valueInR; // set of registers where the variable is.
 public:
 	value_type type;
 	value_scope scope;
@@ -67,7 +66,6 @@ public:
 		id = n*100000 + scope;
 		offsetInStack = 0;
 		selfStored = (scope != Temporal); // fixme: wrong conditions. It should be "if it is a parameter"
-//		if  valueIn.insert(this);
 	}
 
 	Variable& operator=(CPURegister* r) {
@@ -85,6 +83,11 @@ public:
 		return *this;
 	}
 
+	Variable& operator-=(CPURegister* r) {
+		if (r != nullptr)
+			locations.remove(r, this);
+		return *this;
+	}
 
 	void setSingleLocation();
 
@@ -95,30 +98,22 @@ public:
 	}
 
 	bool inRegister(CPURegister* r) {
-		return this->valueInR.find(r) != this->valueInR.end();
+		return locations.contains(r, this);
 	}
 
 	bool inRegister() {
-		return !this->valueInR.empty();
+		return locations.contains2(this);
 	}
 
 	CPURegister* getRegisterWithValue() {
 		if (inRegister())
-			return (*this->valueInR.begin());
-		return 0;
+			return (*locations.begin2(this));
+		return nullptr;
 	}
 
 	std::string toString();
 
-	void deattachSimple(CPURegister* r) {
-		valueInR.erase(r);
-	}
-
 	void deattach(CPURegister* r);
-
-	void attachSimple(CPURegister* r) {
-		valueInR.insert(r);
-	}
 
 	void attach(CPURegister* r);
 };
@@ -169,7 +164,6 @@ public:
 class CPURegister : public Identifiable {
 private:
 	M2MRelationship<CPURegister*, Variable*>& locations;
-	std::set< Variable* , my_compare> valueOf; // set of variables whose values are in this register.
 public:
 	value_type type;
 	std::string name;
@@ -184,31 +178,21 @@ public:
 	void freeRegister(Function f);
 
 	bool holdingValue() {
-		return !this->valueOf.empty();
+		return locations.degree1(this) > 0;
 	}
 
 	unsigned nrHoldedValues() {
-		return this->valueOf.size();
+		return locations.degree1(this);
 	}
 
 	void setSingleReference(Variable* v);
 
-	void deattachSimple(Variable* v) {
-		valueOf.erase(v);
-	}
-
 	void deattach(Variable* v) {
-		valueOf.erase(v);
-		v->deattachSimple(this);
-	}
-
-	void attachSimple(Variable* v) {
-		valueOf.insert(v);
+		locations.remove(this, v);
 	}
 
 	void attach(Variable* v) {
-		valueOf.insert(v);
-		v->attachSimple(this);
+		(*v) += this;
 	}
 };
 

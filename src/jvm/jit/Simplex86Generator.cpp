@@ -32,31 +32,23 @@ std::string Variable::toString() {
 }
 
 void Variable::setSingleLocation() {
-	for (auto& r : valueInR)
-		r->deattachSimple(this);
-	valueInR.clear();
+	(*this) = 0;
 	selfStored = true;
 	needToBeSaved = false;
 }
 
 void Variable::setRegisterLocation(CPURegister* r) {
-	for (auto& r : valueInR)
-		r->deattachSimple(this);
-	valueInR.clear();
-	valueInR.insert(r);
-	// FIXME : Iterate over variables
+	(*this) = r;
 	selfStored = false;
 	needToBeSaved = true;
 }
 
 void Variable::deattach(CPURegister* r) {
-	valueInR.erase(r);
-	r->deattachSimple(this);
+	(*this)-=r;
 }
 
 void Variable::attach(CPURegister* r) {
-	valueInR.insert(r);
-	r->attachSimple(this);
+	(*this)+=r;
 }
 
 Variable* Vars::get(const jit_value& value) const {
@@ -85,23 +77,20 @@ Variable* Vars::get(const jit_value& value) const {
 template <class Function>
 void CPURegister::freeRegister(Function fn) {
 	// save the register in every variable it knows
-	for (auto& v : valueOf) {
+	for (M2MRelationship<CPURegister*, Variable*>::iterator2 it =
+			locations.begin1(this), itEnd = locations.end1(this);
+			it != itEnd; ++it){
+		Variable* v = (*it);
 		if (!v->inVar() && v->inRegister(this)) {
-			v->deattachSimple(this);
 			fn(v->toString(), name);
 			v->selfStored = true;
 		}
-		else if (v->inVar() && v->inRegister(this)) {
-			v->deattachSimple(this);
-		}
 	}
-	valueOf.clear();
+	locations.removeAll1(this);
 }
 
 void CPURegister::setSingleReference(Variable* v) {
-	for (auto& v : valueOf)
-		v->deattachSimple(this);
-	valueOf.clear();
+	locations.removeAll1(this);
 	attach(v);
 }
 
