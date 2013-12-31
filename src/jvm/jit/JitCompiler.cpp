@@ -44,7 +44,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 	stack<jit_value> values;
 	vector< pair< int, int > > bytecode2qua;
 	set<int> labels;
-	jit_value v1,v2,v;
+	jit_value v1,v2,v, vTmp1, vTmp2;
 //	Objeto ref;
 	jint a, b;
 	int32_t branch1;
@@ -138,7 +138,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				i2 = (int32_t) code->code[index + 1];
 				procedure.jit_assign_local(jit_local_field(i2, jit::Integer), values.top());
 				values.pop();
-//					setLocal(i2, popI());
 				index += 2;
 				break;
 			case iastore:
@@ -146,7 +145,18 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				v = values.top(); values.pop(); // r-value
 				v2 = values.top(); values.pop(); // index
 				v1 = values.top(); values.pop(); // array
-				procedure.jit_regular_operation(SET_ARRAY_POS, v,v2, v1);
+
+				vTmp1 = procedure.jit_binary_operation(PLUS,
+						v1,jit_constant(BASE_OBJECT_SIZE + sizeof(uint32_t)));
+
+				vTmp2 = procedure.jit_binary_operation(SHL,
+						v2, jit_constant(2)); // multiply per 4
+
+				vTmp1 = procedure.jit_binary_operation(PLUS,
+						vTmp1, vTmp2); // final address
+
+				procedure.jit_regular_operation(MOV_TO_ADDR,
+						vTmp1, v);
 				index++;
 				break;
 			case iload_0:
@@ -184,7 +194,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case if_icmpne:
 				v2 = values.top(); values.pop(); // b
 				v1 = values.top(); values.pop(); // a
-				// jump if v1 >= v2
 				branch1 = (char) code->code[index + 1];
 				branch2 = (unsigned char)code->code[index + 2];
 				branch1 = index + ((branch1 << 8) | branch2);
@@ -238,9 +247,20 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //						index += 3;
 //					break;
 			case iaload:
-				v2 = values.top(); values.pop();
-				v1 = values.top(); values.pop();
-				values.push(procedure.jit_regular_operation(GET_ARRAY_POS, v1,v2, Integer));
+				v2 = values.top(); values.pop(); // index
+				v1 = values.top(); values.pop(); // address
+
+				vTmp1 = procedure.jit_binary_operation(PLUS,
+						v1,jit_constant(BASE_OBJECT_SIZE + sizeof(uint32_t)));
+
+				vTmp2 = procedure.jit_binary_operation(SHL,
+						v2, jit_constant(2)); // multiply per 4
+
+				vTmp1 = procedure.jit_binary_operation(PLUS,
+						vTmp1, vTmp2); // final address
+
+				values.push(procedure.jit_regular_operation(MOV_FROM_ADDR,
+						vTmp1, useless_value, Integer));
 				index++;
 				break;
 			case ineg:
