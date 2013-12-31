@@ -25,6 +25,8 @@
 
 #include "../../utilities/TemporaryFile.h"
 #include "../../utilities/Logger.h"
+#include "../../utilities/ManyToMany.h"
+
 
 #include "../down_calls.h"
 
@@ -45,6 +47,7 @@ struct my_compare {
 
 class Variable : public Identifiable {
 private:
+	M2MRelationship<CPURegister*, Variable*>& locations;
 	std::set< Variable*, my_compare > valueIn; // set of variables where the value of this variables is.
 	std::set< CPURegister*, my_compare > valueInR; // set of registers where the variable is.
 public:
@@ -54,7 +57,7 @@ public:
 	bool needToBeSaved;
 	int offsetInStack;
 
-	Variable(value_scope s, int ind) {
+	Variable(value_scope s, int ind, M2MRelationship<CPURegister*, Variable*>& l) : locations(l) {
 		type = Integer;
 		scope = s;
 		n = ind;
@@ -109,20 +112,22 @@ public:
 };
 
 class Vars {
+private:
+	M2MRelationship<CPURegister*, Variable*>& locations;
 public:
 	std::set<Variable*, my_compare> variables;
 
 	unsigned countOfParameters;
 	int localCount;
 
-	Vars(unsigned countOfParameters) {
+	Vars(unsigned countOfParameters, M2MRelationship<CPURegister*, Variable*>& l):locations(l) {
 		localCount = 0;
 		this->countOfParameters = countOfParameters;
 	}
 
 	void addVariable(const jit_value& op) {
 		if (op.meta.scope == Local || op.meta.scope == Temporal || op.meta.scope == Field) {
-			Variable* v0 = new Variable(op.meta.scope, op.value);
+			Variable* v0 = new Variable(op.meta.scope, op.value, locations);
 			v0->type = op.meta.type;
 			if (variables.find(v0) == variables.end() && v0->scope == Local)
 				localCount ++;
@@ -151,12 +156,13 @@ public:
 
 class CPURegister : public Identifiable {
 private:
+	M2MRelationship<CPURegister*, Variable*>& locations;
 	std::set< Variable* , my_compare> valueOf; // set of variables whose values are in this register.
 public:
 	value_type type;
 	std::string name;
 
-	CPURegister(const char* name, int number) {
+	CPURegister(const char* name, int number, M2MRelationship<CPURegister*, Variable*>& l) : locations(l) {
 		this->name = name;
 		this->id = number;
 		type = Integer;
@@ -208,6 +214,7 @@ public:
 private:
 	std::vector<CPURegister*> registers;
 	ReleaseX86RegisterFunctor functor;
+	M2MRelationship<CPURegister*, Variable*> m2mRegisterVariable;
 
 	void generateBasicBlock(const Vars& variables, BasicBlock* bb);
 
@@ -221,7 +228,7 @@ private:
 template <class CodeSectionManager>
 void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager) {
 	// definition of involved variables
-	Vars variables(routine.countOfParameters);
+	Vars variables(routine.countOfParameters, m2mRegisterVariable);
 	for (unsigned i = 0 ; i < routine.q.size(); i++) {
 		Quadr q = routine.q[i];
 		variables.addVariable(q.op1);

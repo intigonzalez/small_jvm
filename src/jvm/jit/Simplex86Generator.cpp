@@ -70,8 +70,9 @@ void Variable::attach(CPURegister* r) {
 }
 
 Variable* Vars::get(const jit_value& value) const {
-	Variable v(value.meta.scope, value.value);
-	set<Variable*>::iterator itV = variables.find(&v);
+	set<Variable*>::iterator itV = std::find_if(variables.begin(), variables.end(), [value](Variable* vi){
+		return vi->scope == value.meta.scope && vi->n == value.value;
+	});
 	if (itV == variables.end()) return nullptr;
 	Variable* vv = *itV;
 	if (value.meta.scope == Temporal) {
@@ -190,12 +191,12 @@ std::string Simplex86Generator::getDataForDiv(const jit_value& operand, const Va
 static map<int, string> operatorToInstruction;
 
 Simplex86Generator::Simplex86Generator() {
-	registers.push_back(new CPURegister("eax",0));
-	registers.push_back(new CPURegister("ebx",1));
-	registers.push_back(new CPURegister("ecx",2));
-	registers.push_back(new CPURegister("edx",3));
-	registers.push_back(new CPURegister("esi",4));
-	registers.push_back(new CPURegister("edi",5));
+	registers.push_back(new CPURegister("eax",0, m2mRegisterVariable));
+	registers.push_back(new CPURegister("ebx",1, m2mRegisterVariable));
+	registers.push_back(new CPURegister("ecx",2, m2mRegisterVariable));
+	registers.push_back(new CPURegister("edx",3, m2mRegisterVariable));
+	registers.push_back(new CPURegister("esi",4, m2mRegisterVariable));
+	registers.push_back(new CPURegister("edi",5, m2mRegisterVariable));
 
 	operatorToInstruction[PLUS] = "add ";
 	operatorToInstruction[SUB] = "sub ";
