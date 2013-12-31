@@ -35,9 +35,7 @@ void Variable::setSingleLocation() {
 	for (auto& r : valueInR)
 		r->deattachSimple(this);
 	valueInR.clear();
-	// FIXME : Iterate over variables
-	valueIn.clear();
-	this->attach(this);
+	selfStored = true;
 	needToBeSaved = false;
 }
 
@@ -47,16 +45,8 @@ void Variable::setRegisterLocation(CPURegister* r) {
 	valueInR.clear();
 	valueInR.insert(r);
 	// FIXME : Iterate over variables
-	valueIn.clear();
+	selfStored = false;
 	needToBeSaved = true;
-}
-
-void Variable::markAsForgetten() {
-	for (auto& r : valueInR)
-		r->deattachSimple(this);
-	valueInR.clear();
-	// FIXME : Iterate over variables
-	valueIn.clear();
 }
 
 void Variable::deattach(CPURegister* r) {
@@ -96,12 +86,12 @@ template <class Function>
 void CPURegister::freeRegister(Function fn) {
 	// save the register in every variable it knows
 	for (auto& v : valueOf) {
-		if (!v->inVar(v) && v->inRegister(this)) {
+		if (!v->inVar() && v->inRegister(this)) {
 			v->deattachSimple(this);
 			fn(v->toString(), name);
-			v->attach(v);
+			v->selfStored = true;
 		}
-		else if (v->inVar(v) && v->inRegister(this)) {
+		else if (v->inVar() && v->inRegister(this)) {
 			v->deattachSimple(this);
 		}
 	}
@@ -470,10 +460,10 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			break;
 		}
 		if (op1.meta.scope == Temporal)
-			variables.get(op1)->markAsForgetten();
+			(*variables.get(op1)) = 0;
 
 		if (op2.meta.scope == Temporal)
-			variables.get(op2)->markAsForgetten();
+			(*variables.get(op2)) = 0;
 	}
 	// FXIME : this is a BottleNect for performance
 	for (auto& r : registers)

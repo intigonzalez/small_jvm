@@ -48,7 +48,7 @@ struct my_compare {
 class Variable : public Identifiable {
 private:
 	M2MRelationship<CPURegister*, Variable*>& locations;
-	std::set< Variable*, my_compare > valueIn; // set of variables where the value of this variables is.
+//	std::set< Variable*, my_compare > valueIn; // set of variables where the value of this variables is.
 	std::set< CPURegister*, my_compare > valueInR; // set of registers where the variable is.
 public:
 	value_type type;
@@ -57,6 +57,8 @@ public:
 	bool needToBeSaved;
 	int offsetInStack;
 
+	bool selfStored;
+
 	Variable(value_scope s, int ind, M2MRelationship<CPURegister*, Variable*>& l) : locations(l) {
 		type = Integer;
 		scope = s;
@@ -64,15 +66,32 @@ public:
 		needToBeSaved = true;
 		id = n*100000 + scope;
 		offsetInStack = 0;
-		if (scope != Temporal) valueIn.insert(this);
+		selfStored = (scope != Temporal); // fixme: wrong conditions. It should be "if it is a parameter"
+//		if  valueIn.insert(this);
 	}
+
+	Variable& operator=(CPURegister* r) {
+		locations.removeAll2(this);
+		if (r != nullptr) {
+			locations.removeAll2(this);
+			locations.add(r, this);
+		}
+		return *this;
+	}
+
+	Variable& operator+=(CPURegister* r) {
+		if (r != nullptr)
+			locations.add(r, this);
+		return *this;
+	}
+
 
 	void setSingleLocation();
 
 	void setRegisterLocation(CPURegister* r);
 
-	bool inVar(Variable* var) {
-		return this->valueIn.find(var) != var->valueIn.end();
+	bool inVar() {
+		return selfStored; //this->valueIn.find(var) != var->valueIn.end();
 	}
 
 	bool inRegister(CPURegister* r) {
@@ -89,8 +108,6 @@ public:
 		return 0;
 	}
 
-	void markAsForgetten();
-
 	std::string toString();
 
 	void deattachSimple(CPURegister* r) {
@@ -98,11 +115,6 @@ public:
 	}
 
 	void deattach(CPURegister* r);
-
-	void attach(Variable* v) {
-		valueIn.insert(v);
-		//v->attachSimple(this);
-	}
 
 	void attachSimple(CPURegister* r) {
 		valueInR.insert(r);

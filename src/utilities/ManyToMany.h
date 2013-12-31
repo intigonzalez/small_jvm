@@ -45,7 +45,7 @@ public:
 	
 	void removeAll2(H h) {
 		l.remove_if([h](std::pair<T,H> p) {
-			return p.scond == h; 
+			return p.second == h;
 		});
 	}
 
