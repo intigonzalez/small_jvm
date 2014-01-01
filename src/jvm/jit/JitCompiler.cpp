@@ -11,6 +11,7 @@
 #include "../JvmJit.h"
 
 #include "../../jvmclassfile/JVMSpecUtils.h"
+#include "../../utilities/SimpleStack.h"
 
 #include <vector>
 #include <stack>
@@ -41,7 +42,7 @@ void* JitCompiler::compile(ClassFile* cf, MethodInfo* method){
 }
 
 jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
-	stack<jit_value> values;
+	SimpleStack<jit_value, 17> values;
 	vector< pair< int, int > > bytecode2qua;
 	set<int> labels;
 	jit_value v1,v2,v, vTmp1, vTmp2;
@@ -98,9 +99,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case astore_2:
 			case astore_3:
 				b = opcode - astore_0;
-				procedure.jit_assign_local(jit_local_field(b, jit::ObjRef), values.top());
-				values.pop();
-//					setLocal(b, popRef());
+				procedure.jit_assign_local(jit_local_field(b, jit::ObjRef), values.pop());
 				index++;
 				break;
 //				case astore:
@@ -129,22 +128,19 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case istore_2:
 			case istore_3:
 				b = opcode - istore_0;
-				procedure.jit_assign_local(jit_local_field(b, jit::Integer), values.top());
-				values.pop();
-//					setLocal(b, popI());
+				procedure.jit_assign_local(jit_local_field(b, jit::Integer), values.pop());
 				index++;
 				break;
 			case istore:
 				i2 = (int32_t) code->code[index + 1];
-				procedure.jit_assign_local(jit_local_field(i2, jit::Integer), values.top());
-				values.pop();
+				procedure.jit_assign_local(jit_local_field(i2, jit::Integer), values.pop());
 				index += 2;
 				break;
 			case iastore:
 //				case castore:
-				v = values.top(); values.pop(); // r-value
-				v2 = values.top(); values.pop(); // index
-				v1 = values.top(); values.pop(); // array
+				v = values.pop(); // r-value
+				v2 = values.pop(); // index
+				v1 = values.pop(); // array
 
 				vTmp1 = procedure.jit_binary_operation(PLUS,
 						v1,jit_constant(BASE_OBJECT_SIZE + sizeof(uint32_t)));
@@ -192,8 +188,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case if_icmplt:
 			case if_icmpgt:
 			case if_icmpne:
-				v2 = values.top(); values.pop(); // b
-				v1 = values.top(); values.pop(); // a
+				v2 = values.pop(); // b
+				v1 = values.pop(); // a
 				branch1 = (char) code->code[index + 1];
 				branch2 = (unsigned char)code->code[index + 2];
 				branch1 = index + ((branch1 << 8) | branch2);
@@ -213,7 +209,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case ifge:
 			case ifeq:
 			case ifgt:
-				v1 = values.top(); values.pop();
+				v1 = values.pop();
 				oper = JNE;
 				if (opcode == ifle) oper = JLE;
 				else if (opcode == ifge) oper = JGE;
@@ -247,8 +243,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //						index += 3;
 //					break;
 			case iaload:
-				v2 = values.top(); values.pop(); // index
-				v1 = values.top(); values.pop(); // address
+				v2 = values.pop(); // index
+				v1 = values.pop(); // address
 
 				vTmp1 = procedure.jit_binary_operation(PLUS,
 						v1,jit_constant(BASE_OBJECT_SIZE + sizeof(uint32_t)));
@@ -264,7 +260,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				index++;
 				break;
 			case ineg:
-				v1 = values.top(); values.pop();
+				v1 = values.pop();
 				values.push(procedure.jit_binary_operation(SUB, jit_constant(0),v1));
 				index++;
 				break;
@@ -275,8 +271,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case irem:
 			case ishl:
 			case ishr:
-				v2 = values.top(); values.pop();
-				v1 = values.top(); values.pop();
+				v2 = values.pop();
+				v1 = values.pop();
 				oper = PLUS;
 				if (opcode == isub) oper = SUB;
 				else if (opcode == imul) oper = MUL;
@@ -312,8 +308,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				count2 = count = JVMSpecUtils::countOfParameter(cf, i2);
 				while (count) {
 					procedure.jit_regular_operation(PUSH_ARG,
-							values.top());
-					values.pop();
+							values.pop());
 					count--;
 				}
 				// TODO: Check if the error (inexistent method) is triggered at execution or compilation time.
@@ -351,8 +346,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				count2 = count = JVMSpecUtils::countOfParameter(cf, i2) + 1; // +1 because of this
 				while (count) {
 					procedure.jit_regular_operation(PUSH_ARG,
-							values.top());
-					values.pop();
+							values.pop());
 					count--;
 				}
 				// TODO: Check if the error (inexistent method) is triggered at execution or compilation time.
@@ -393,8 +387,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				count2 = count = JVMSpecUtils::countOfParameter(cf, i2) + 1; // +1 because of this
 				while (count) {
 					procedure.jit_regular_operation(PUSH_ARG,
-							values.top());
-					values.pop();
+							values.pop());
 					count--;
 				}
 				// TODO: Check if the error (inexistent method) is triggered at execution or compilation time.
@@ -437,8 +430,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				index++;
 				break;
 			case ireturn:
-				procedure.jit_return_int(values.top());
-				values.pop();
+				procedure.jit_return_int(values.pop());
 				index++;
 				break;
 			case op_new:
@@ -460,7 +452,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				break;
 			case op_newarray:
 				i2 = code->code[index + 1];
-				v = values.top(); values.pop(); // size of the array
+				v = values.pop(); // size of the array
 
 				procedure.jit_regular_operation(PUSH_ARG,
 						v);
@@ -475,7 +467,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				index += 2;
 				break;
 			case arraylength:
-				v1 = values.top(); values.pop();
+				v1 = values.pop();
 
 				v = procedure.jit_binary_operation(PLUS,
 						v1, jit_constant(BASE_OBJECT_SIZE));
@@ -491,7 +483,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				break;
 			case op_dup2:
 				// FIXME : LONG and Double, see jvm specification
-				v1 = values.top(); values.pop();
+				v1 = values.pop();
 				v2 = values.top();
 				values.push(v1);
 				values.push(procedure.jit_copy(v2));
@@ -502,8 +494,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				branch1 = (unsigned char) code->code[index + 1];
 				branch2 = (unsigned char) code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
-				v = values.top(); values.pop(); // value
-				v2 = values.top(); values.pop(); // object
+				v = values.pop(); // value
+				v2 = values.pop(); // object
 
 				// if the class is loaded and initialized then we can calculate the position of the field
 				sTmp = JVMSpecUtils::getClassNameFromFieldRef(cf, i2);
@@ -549,7 +541,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 						jit_constant(2), // two parameters
 						Integer);
 
-				v = values.top(); values.pop(); // value
+				v = values.pop(); // value
 				procedure.jit_regular_operation(
 						MOV_TO_ADDR,
 						v1, v);
@@ -560,7 +552,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				branch2 = (unsigned char)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 
-				v2 = values.top(); values.pop(); // object
+				v2 = values.pop(); // object
 
 				// if the class is loaded and initialized then we can calculate the position of the field
 				sTmp = JVMSpecUtils::getClassNameFromFieldRef(cf, i2);

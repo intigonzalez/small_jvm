@@ -25,8 +25,9 @@ using namespace std;
 namespace jit {
 
 std::string Variable::toString() {
-	if (scope == Local || scope == Temporal)
+	if (scope == Local || scope == Temporal) {
 		return "[ebp-" + std::to_string(offsetInStack) + "]";
+	}
 	jit_value value = { type, scope, n };
 	return value.toString();
 }
@@ -74,12 +75,7 @@ void CPURegister::freeRegister(Function fn) {
 	locations.removeAll1(this);
 }
 
-void CPURegister::setSingleReference(Variable* v) {
-	locations.removeAll1(this);
-	(*v) += this;
-}
-
-CPURegister* Simplex86Generator::getRegister(const jit_value& op2, const Vars& vars, ulong fixed, bool generateMov) {
+CPURegister* Simplex86Generator::ensureValueIsInRegister(const jit_value& op2, const Vars& vars, ulong fixed, bool generateMov) {
 	Variable* v = vars.get(op2);
 	if (v && v->inRegister())  {
 		// the value is in a register
@@ -89,7 +85,7 @@ CPURegister* Simplex86Generator::getRegister(const jit_value& op2, const Vars& v
 	unsigned idx = 0;
 	unsigned min = 100000;
 	int imin = -1;
-	while (idx < registers.size() && (registers[idx]->holdingValue() || toSkip.test(idx))) {
+	while (idx < registers.size() && (registers[idx]->nrHoldedValues() > 0 || toSkip.test(idx))) {
 		if (registers[idx]->nrHoldedValues() < min && !toSkip.test(idx)) {
 			imin = idx;
 			min = registers[idx]->nrHoldedValues();
@@ -111,8 +107,8 @@ CPURegister* Simplex86Generator::getRegister(const jit_value& op2, const Vars& v
 	return registers[idx];
 }
 
-CPURegister* Simplex86Generator::getRegister(const jit_value& operand, const Vars& vars) {
-	return getRegister(operand, vars, 0, true);
+CPURegister* Simplex86Generator::ensureValueIsInRegister(const jit_value& operand, const Vars& vars) {
+	return ensureValueIsInRegister(operand, vars, 0, true);
 }
 
 std::string Simplex86Generator::getData(const jit_value& op2, const Vars& vars) {
@@ -131,10 +127,9 @@ CPURegister* Simplex86Generator::getRegistersForDiv(const jit_value& operand, co
 		// the value is in a register
 		if (!v->inRegister(registers[0])) {
 			registers[0]->freeRegister(functor);
+			functor.S() << "mov " << registers[0]->name << "," << getData(operand, vars) << '\n';
 		}
 		registers[3]->freeRegister(functor); // Free edx
-		// FIXME : this is broken if the value is already in eax
-		functor.S() << "mov " << registers[0]->name << "," << getData(operand, vars) << '\n';
 		return registers[0];
 	}
 	registers[0]->freeRegister(functor);
@@ -195,6 +190,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		jit_value op2 = bb->q[i].op2;
 		jit_value res = bb->q[i].res;
 		Variable* v;
+		Variable* v1;
 		CPURegister* reg;
 		CPURegister* reg1;
 		CPURegister* reg2;
@@ -204,19 +200,20 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		void deattach(CPURegister* r);
 		switch (ope) {
 		case CRAZY_OP:
-			reg = getRegister(op1, variables);
-//			v = variables.get(op1);
-//			if (v && !v->inRegister(reg)) {
-//				(*v) = reg;
+			reg = ensureValueIsInRegister(op1, variables);
+			v = variables.get(op1);
+			if (v && !v->inRegister(reg)) {
+				(*v) = reg;
 //				v->selfStored = true;
-//			}
+			}
 
 			v = variables.get(res);
-			// FIXME: this seems to be redundant
-			functor.S() << "mov " << v->toString() << "," << reg->name << '\n';
 
-//			v->setRegisterLocation(reg);
-//			reg->setSingleReference(v); // FIXME: I need many to many
+			(*v) = reg;
+			v->selfStored = false;
+
+			// FIXME: this seems to be redundant
+//			functor.S() << "mov " << v->toString() << "," << reg->name << '\n';
 			continue;
 		case ASSIGN:
 			if (op1.meta.scope == Constant) {
@@ -224,11 +221,10 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 				functor.S() << "mov dword " << v->toString() << "," << op1.toString()
 						<< '\n';
 				(*v) = 0;
-//				v->setSingleLocation();
 			} else {
 				// variable
 				// find empty register
-				reg = getRegister(op1, variables);
+				reg = ensureValueIsInRegister(op1, variables);
 				v = variables.get(res);
 				functor.S() << "mov " << v->toString() << "," << reg->name << '\n';
 				(*v) = reg;
@@ -242,14 +238,18 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		case SHR:
 			if (op1.meta.scope != Constant || op2.meta.scope != Constant) {
 				// find register for op1 and copy it if necessary
-				reg = getRegister(op1, variables);
-				// FIXME: Ok, something is wrong. Look at this case
+				reg = ensureValueIsInRegister(op1, variables);
+				// Ok, something is wrong. Look at this case
 				// Let's say that op1 was in a register and the value has
-				// not been saved to the var. the, the value will never be
-				// saved because. Even more, it will map a wrong storage
+				// not been saved to the var. then, the value will never be
+				// saved. Even more, it will map a wrong storage
 				// location to the var. I am trying to fix it with the
 				// sentence below
+				v1 = variables.get(op1);
+				if (op1.meta.scope == Temporal) // there is no point in saving this variable
+					(*v1) -= reg;
 				reg->freeRegister(functor);
+
 			} else {
 				/* both are constants */
 				assert(false);
@@ -263,13 +263,16 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		case DIV:
 		case REM:
 			if (op1.meta.scope != Constant || op2.meta.scope != Constant) {
-				reg = getRegistersForDiv(op1, variables);
-				// FIXME: Ok, something is wrong. Look at this case
+				reg = getRegistersForDiv(op1, variables); // it is always eax
+				// Ok, something is wrong. Look at this case
 				// Let's say that op1 was in a register and the value has
 				// not been saved to the var. the, the value will never be
 				// saved because. Even more, it will map a wrong storage
 				// location to the var. I am trying to fix it with the
 				// sentence below
+				v1 = variables.get(op1);
+				if (op1.meta.scope == Temporal) // there is no point in saving this variable
+					(*v1) -= reg;
 				reg->freeRegister(functor);
 			} else {
 				/* both are constants */
@@ -303,11 +306,11 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		case JEQ:
 			if (op1.meta.scope != Constant) {
 				// find register for op1 and copy it if necessary
-				reg = getRegister(op1, variables);
+				reg = ensureValueIsInRegister(op1, variables);
 				v = variables.get(op1);
 				if (v && !v->inRegister(reg)) {
-					(*v)+=reg;
-					v->selfStored = true;
+					(*v) = reg;
+//					v->selfStored = true;
 				}
 			} else {
 				/* both are constants */
@@ -362,9 +365,9 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			break;
 		case MOV_FROM_ADDR:
 			used.reset();
-			reg1 = getRegister(op1, variables); // the address
+			reg1 = ensureValueIsInRegister(op1, variables); // the address
 			used.set(reg1->id);
-			reg = getRegister(res,variables, used.to_ulong(), false); // the result will be here
+			reg = ensureValueIsInRegister(res,variables, used.to_ulong(), false); // the result will be here
 			functor.S() << "mov " <<  reg->name << ",[" << reg1->name << "]\n";
 			v = variables.get(res);
 			(*v) = reg;
@@ -372,9 +375,9 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			break;
 		case MOV_TO_ADDR:
 			used.reset();
-			reg1 = getRegister(op1, variables); // the address to dereference
+			reg1 = ensureValueIsInRegister(op1, variables); // the address to dereference
 			used.set(reg1->id);
-			reg = getRegister(op2, variables, used.to_ulong(), true);
+			reg = ensureValueIsInRegister(op2, variables, used.to_ulong(), true);
 			functor.S() << "mov dword [" <<  reg1->name << "]," << reg->name << "\n";
 			break;
 		case OP_RETURN:
@@ -387,12 +390,17 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 						<< '\n';
 			} else {
 				// it is a variable
-				reg = getRegister(op1, variables);
+				reg = ensureValueIsInRegister(op1, variables);
 				if (reg->id != 0) {
 					registers[0]->freeRegister(functor);
 					functor.S() << "mov " << registers[0]->name << "," << reg->name << '\n';
 				}
 			}
+
+			functor.S() << "pop edi\n";
+			functor.S() << "pop esi\n";
+			functor.S() << "pop ebx\n";
+
 			functor.S() << "leave\n";
 			functor.S() << "ret" << '\n';
 			break;
@@ -403,7 +411,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		if (op2.meta.scope == Temporal)
 			(*variables.get(op2)) = 0;
 	}
-	// FXIME : this is a BottleNect for performance
+	// FXIME : this is a Bottleneck for performance
 	for (auto& r : registers)
 		r->freeRegister(functor);
 }

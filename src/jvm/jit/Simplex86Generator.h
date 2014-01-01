@@ -69,7 +69,6 @@ public:
 	Variable& operator=(CPURegister* r) {
 		locations.removeAll2(this);
 		if (r != nullptr) {
-			locations.removeAll2(this);
 			locations.add(r, this);
 		}
 		return *this;
@@ -169,15 +168,9 @@ public:
 	template <class Function>
 	void freeRegister(Function f);
 
-	bool holdingValue() {
-		return locations.degree1(this) > 0;
-	}
-
 	unsigned nrHoldedValues() {
 		return locations.degree1(this);
 	}
-
-	void setSingleReference(Variable* v);
 };
 
 class Simplex86Generator {
@@ -198,8 +191,8 @@ private:
 
 	void generateBasicBlock(const Vars& variables, BasicBlock* bb);
 
-	CPURegister* getRegister(const jit_value& op2, const Vars& vars, ulong fixed, bool generateMov);
-	CPURegister* getRegister(const jit_value& operand, const Vars& vars);
+	CPURegister* ensureValueIsInRegister(const jit_value& op2, const Vars& vars, ulong fixed, bool generateMov);
+	CPURegister* ensureValueIsInRegister(const jit_value& operand, const Vars& vars);
 	std::string getData(const jit_value& op2, const Vars& vars);
 	CPURegister* getRegistersForDiv(const jit_value& operand, const Vars& vars);
 	std::string getDataForDiv(const jit_value& operand, const Vars& vars);
@@ -228,6 +221,10 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	functor.S() << "mov ebp,esp" << '\n';
 	if (variables.variables.size() > 0)
 		functor.S() << "sub esp," << variables.variables.size()*4 << '\n';
+
+	functor.S() << "push ebx\n";
+	functor.S() << "push esi\n";
+	functor.S() << "push edi\n";
 
 	// let remove the quad from the routine
 	routine.q.clear();
