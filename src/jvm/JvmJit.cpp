@@ -121,10 +121,17 @@ void* JvmJit::getAddrFromLoadingJob(LoadingAndCompile* job)
 	// delete job
 
 	ClassFile* calleeClazz = loadAndInit(className);
-	int16_t index = calleeClazz->getCompatibleMethodIndex(methodName.c_str(),
+	int16_t idx;
+	do {
+		idx = calleeClazz->getCompatibleMethodIndex(methodName.c_str(),
 					methodDescription.c_str());
-	if (index >= 0 && index < calleeClazz->methods_count) {
-		MethodInfo* m = calleeClazz->methods[index];
+		if (idx == -1) {
+			calleeClazz = loader->getParentClass(calleeClazz);
+		}
+	}
+	while (calleeClazz && (idx < 0));
+	if (calleeClazz) {
+		MethodInfo* m = calleeClazz->methods[idx];
 		return compile(calleeClazz, m);
 	}
 	throw new runtime_error("Trying to compile an non-existent method");
