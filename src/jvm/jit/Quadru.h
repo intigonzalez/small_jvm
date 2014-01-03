@@ -20,7 +20,7 @@
 
 namespace jit {
 enum value_scope {Constant, Local, Field, Temporal, Useless, Register, Label};
-enum value_type {Integer, Boolean, ObjRef,ArrRef, Void};
+enum value_type {Integer, Byte, ObjRef,ArrRef, Void, CharType};
 
 struct DataQuad {
 	value_type op1_type:3;

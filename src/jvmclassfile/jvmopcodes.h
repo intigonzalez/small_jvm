@@ -1,6 +1,8 @@
 #define bipush 0x10
 #define sipush 0x11
 
+#define checkcast	192
+
 
 #define putfield 	0xb5
 #define getfield 	0xb4
@@ -61,11 +63,14 @@
 
 #define op_goto		0xa7
 
-#define op_dup			0x59
+#define op_dup		0x59
 #define op_dup2		92
+#define op_dup_x2	91
 
-#define i2f			0x86
-#define f2i			0x8b
+#define i2f		0x86
+#define f2i		0x8b
+#define i2c		146
+#define i2b		145
 
 #define invokevirtual	0xb6
 #define	invokespecial	0xb7
@@ -105,6 +110,10 @@
 
 #define castore 0x55
 #define caload 0x34
+
+#define bastore 0x54
+#define baload 0x33
+
 
 #define iand		126
 #define ior			128

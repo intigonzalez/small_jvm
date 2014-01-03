@@ -10,7 +10,8 @@ enum OP_QUAD {
 	GOTO, JGE, JLE, JLT, JG, JNE, JEQ = 19,
 	OP_RETURN = 20,
 	PUSH_ARG, CALL_STATIC, PLAIN_CALL = 23,
-	CRAZY_OP = 24 // FIXME: My GOD, What is this?????????????? UGLYYYYYYYY
+	CRAZY_OP = 24, // FIXME: My GOD, What is this?????????????? UGLYYYYYYYY,
+	AND, OR, SAR
 };
 
 }

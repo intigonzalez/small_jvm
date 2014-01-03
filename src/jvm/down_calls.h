@@ -29,7 +29,7 @@ extern "C" {
 /**
  * Get the address of a method already loaded within some class.
  * The function compiles the method if needed.
- */
+// */
 void* getAddressForLoadedMethod(int id);
 
 void* highlevel_loadClassCompileMethodAndPath(void* job);
@@ -44,6 +44,11 @@ void* getStaticFieldAddress(ClassFile* clazzFile, int idxField);
  * Get the address of any field in any class referenced by idxField within clazzFile
  */
 int getFieldDisplacement(ClassFile* clazzFile, int idxField);
+
+/**
+ * Implement the semantic of checkcast JVM's operator
+ */
+void highlevel_checkcast(ClassFile* clazzFile, int idxField, Objeto obj);
 
 /**
  * This pseudo-function modifies the calling context to fix the target address of a previously non-compiled method.

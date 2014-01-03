@@ -168,6 +168,9 @@ Simplex86Generator::Simplex86Generator() {
 	operatorToInstruction[JLT] = "jl ";
 	operatorToInstruction[JEQ] = "jz ";
 	operatorToInstruction[JNE] = "jne ";
+	operatorToInstruction[AND] = "and ";
+	operatorToInstruction[OR] = "or ";
+	operatorToInstruction[SAR] = "sar ";
 }
 
 Simplex86Generator::~Simplex86Generator() {
@@ -236,6 +239,9 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		case SUB:
 		case SHL:
 		case SHR:
+		case AND:
+		case OR:
+		case SAR:
 			if (op1.meta.scope != Constant || op2.meta.scope != Constant) {
 				// find register for op1 and copy it if necessary
 				reg = ensureValueIsInRegister(op1, variables);
@@ -252,6 +258,7 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 
 			} else {
 				/* both are constants */
+				cout << ope << " FUCK " << op1.value << op2.value << endl;
 				assert(false);
 			}
 			functor.S() << operatorToInstruction[ope] << reg->name << ","
@@ -368,7 +375,16 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			reg1 = ensureValueIsInRegister(op1, variables); // the address
 			used.set(reg1->id);
 			reg = ensureValueIsInRegister(res,variables, used.to_ulong(), false); // the result will be here
-			functor.S() << "mov " <<  reg->name << ",[" << reg1->name << "]\n";
+			if (res.meta.type == CharType) {
+				functor.S() << "xor " << reg->name << "," << reg->name << '\n';
+				functor.S() << "mov " <<  reg->name16b << ",[" << reg1->name << "]\n";
+			}
+			else if (res.meta.type == Byte) {
+				functor.S() << "xor " << reg->name << "," << reg->name << '\n';
+				functor.S() << "mov " <<  reg->name8b << ",[" << reg1->name << "]\n";
+			}
+			else
+				functor.S() << "mov " <<  reg->name << ",[" << reg1->name << "]\n";
 			v = variables.get(res);
 			(*v) = reg;
 			v->selfStored = false;
@@ -378,7 +394,13 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			reg1 = ensureValueIsInRegister(op1, variables); // the address to dereference
 			used.set(reg1->id);
 			reg = ensureValueIsInRegister(op2, variables, used.to_ulong(), true);
-			functor.S() << "mov dword [" <<  reg1->name << "]," << reg->name << "\n";
+			if (op2.meta.type == CharType) {
+				functor.S() << "mov [" <<  reg1->name << "]," << reg->name16b << "\n";
+			}
+			else if (op2.meta.type == Byte)
+				functor.S() << "mov [" <<  reg1->name << "]," << reg->name8b << "\n";
+			else
+				functor.S() << "mov [" <<  reg1->name << "]," << reg->name << "\n";
 			break;
 		case OP_RETURN:
 			if (op1.meta.scope == Useless) {

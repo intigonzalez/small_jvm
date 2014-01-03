@@ -166,7 +166,7 @@ i		 */
 		 * Description 
 		 * Array of bytes
 		 */
-		byte[] b = new byte[45678];
+		byte[] b = new byte[5];
 		for (int i = 0; i < b.length ; i++)
 			b[i] = (byte)(i % 125);
 		int m = 1;

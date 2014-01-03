@@ -20,6 +20,8 @@ void initDownCalls()
 	rawTypes[t->getName()] = t;
 	t = new BoolType();
 	rawTypes[t->getName()] = t;
+	t = new ByteType();
+	rawTypes[t->getName()] = t;
 }
 
 Objeto newRawArray(RawArrayTypes type, int length)
@@ -34,6 +36,10 @@ Objeto newRawArray(RawArrayTypes type, int length)
 	case T_CHAR:
 		name += "C";
 		base = rawTypes["char"];
+		break;
+	case T_BYTE:
+		name += "B";
+		base = rawTypes["byte"];
 		break;
 	default:
 		std::cout << "Error in " << __FILE__ << ":" << __FUNCTION__
@@ -88,4 +94,17 @@ int getFieldDisplacement(ClassFile* clazzFile, int idxField)
 		return clazz->sizeUntil(fieldName) + BASE_OBJECT_SIZE;
 	else throw runtime_error("Trying to access a field from some already unload class, "
 			"that is impossible because NEW should be called first");
+}
+
+void highlevel_checkcast(ClassFile* clazzFile, int idxClazz, Objeto obj)
+{
+	std::string clazzName = JVMSpecUtils::
+			getClassNameFromClassRef(clazzFile, idxClazz);
+	// ensure that the class is loaded
+	jvm::JvmJit::instance()->loadAndInit(clazzName);
+	bool b = jvm::JvmJit::instance()->checkcast_impl(clazzFile, clazzName);
+	if (!b) {
+		throw(std::runtime_error("Checkcast fails"));
+	}
+
 }

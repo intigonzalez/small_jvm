@@ -137,7 +137,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				index += 2;
 				break;
 			case iastore:
-//				case castore:
+			case castore:
+			case bastore:
 				v = values.pop(); // r-value
 				v2 = values.pop(); // index
 				v1 = values.pop(); // array
@@ -145,8 +146,20 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				vTmp1 = procedure.jit_binary_operation(PLUS,
 						v1,jit_constant(BASE_OBJECT_SIZE + sizeof(uint32_t)));
 
+				switch (opcode) {
+				case castore:
+					count = 1;
+					v.meta.type = CharType;
+					break;
+				case bastore:
+					count = 0; // the compiler should optimize this case (future)
+					v.meta.type = Byte;
+					break;
+				default:
+					count = 2;
+				}
 				vTmp2 = procedure.jit_binary_operation(SHL,
-						v2, jit_constant(2)); // multiply per 4
+						v2, jit_constant(count)); // multiply for array element's size
 
 				vTmp1 = procedure.jit_binary_operation(PLUS,
 						vTmp1, vTmp2); // final address
@@ -170,7 +183,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				values.push(procedure.jit_copy(v1));
 				index += 2;
 				break;
-//				case caload:
+//
 //					i2 = popI();
 //					ref = popRef();
 //					v.l = 0;
@@ -178,6 +191,23 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					push(v, CHAR);
 //					index++;
 //					break;
+			case i2c:
+				values.push(procedure.jit_binary_operation(AND,
+						values.pop(),
+						jit_constant(0x0000ffff)));
+				index ++;
+				break;
+			case i2b:
+				v = procedure.jit_binary_operation(AND,
+						values.pop(),
+						jit_constant(0x000000ff));
+				v = procedure.jit_binary_operation(SHL,
+						v, jit_constant(24));
+				v = procedure.jit_binary_operation(SAR,
+						v, jit_constant(24));
+				values.push(v); // truncate
+				index++;
+				break;
 			case bipush:
 				values.push(jit_constant((int) code->code[index + 1]));
 				index += 2;
@@ -243,19 +273,34 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //						index += 3;
 //					break;
 			case iaload:
+			case caload:
+			case baload:
 				v2 = values.pop(); // index
 				v1 = values.pop(); // address
 
 				vTmp1 = procedure.jit_binary_operation(PLUS,
 						v1,jit_constant(BASE_OBJECT_SIZE + sizeof(uint32_t)));
 
+				count = 2;
+				if (opcode == caload) {
+					count = 1;
+				} else if (opcode == baload)
+					count = 0;
+
 				vTmp2 = procedure.jit_binary_operation(SHL,
-						v2, jit_constant(2)); // multiply per 4
+						v2, jit_constant(count)); // multiply for array element's size
 
 				vTmp1 = procedure.jit_binary_operation(PLUS,
 						vTmp1, vTmp2); // final address
 
-				values.push(procedure.jit_regular_operation(MOV_FROM_ADDR,
+				if (opcode == caload)
+					values.push(procedure.jit_regular_operation(MOV_FROM_ADDR,
+						vTmp1, useless_value, CharType));
+				else if (opcode == baload)
+					values.push(procedure.jit_regular_operation(MOV_FROM_ADDR,
+						vTmp1, useless_value, Byte));
+				else
+					values.push(procedure.jit_regular_operation(MOV_FROM_ADDR,
 						vTmp1, useless_value, Integer));
 				index++;
 				break;
@@ -358,7 +403,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 							PLAIN_CALL,
 							jit_address(tmp->address),
 							jit_constant(count2),
-							Integer);
+							Void);
 				} else {
 					// TODO: the class is not loaded, generate stub method to:
 					// 1 - Load the class
@@ -373,7 +418,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 							CALL_STATIC,
 							jit_address(task),
 							jit_constant(count2),
-							Integer);
+							Void);
 				}
 				index += 3;
 				break;
@@ -488,6 +533,17 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				values.push(v1);
 				values.push(procedure.jit_copy(v2));
 				values.push(procedure.jit_copy(v1));
+				index++;
+				break;
+			case op_dup_x2:
+				// FIXME : Long and double, see jvm specification
+				v1 = values.pop();
+				v2 = values.pop();
+				v = values.pop();
+				values.push(procedure.jit_copy(v1));
+				values.push(v);
+				values.push(v2);
+				values.push(v1);
 				index++;
 				break;
 			case putfield:
@@ -619,6 +675,26 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				i2 = (branch1 << 8) | branch2;
 				values.push(jit_constant(i2));
 				index += 3;
+				break;
+			case checkcast:
+				branch1 = (unsigned char) code->code[index + 1];
+				branch2 = (unsigned char)code->code[index + 2];
+				i2 = (branch1 << 8) | branch2;
+				// the object
+				procedure.jit_regular_operation(PUSH_ARG,
+						values.pop()); // FIXME, may I always remove this object
+				// the index
+				procedure.jit_regular_operation(PUSH_ARG,
+						jit_constant(i2));
+				// this classfile
+				procedure.jit_regular_operation(PUSH_ARG,
+								jit_address(cf));
+				// calling
+				v1 = procedure.jit_regular_operation(PLAIN_CALL,
+								jit_address((void*)&getFieldDisplacement),
+								jit_constant(3), // three parameters
+								Void);
+				index+=3;
 				break;
 			default:
 				cerr << "Unknown opcode " << (unsigned) (unsigned char) code->code[index]

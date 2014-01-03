@@ -158,9 +158,14 @@ private:
 public:
 	value_type type;
 	std::string name;
+	std::string name16b;
+	std::string name8b;
 
 	CPURegister(const char* name, int number, M2MRelationship<CPURegister*, Variable*>& l) : locations(l) {
 		this->name = name;
+		this->name16b = this->name.substr(1); // FIXME, what a ugly hack. it works only for xi386
+		std::string tmp = this->name16b.substr(0,1);
+		this->name8b = tmp + "l"; // FIXME, even worst and it doesn't work with EDI and ESI
 		this->id = number;
 		type = Integer;
 	}

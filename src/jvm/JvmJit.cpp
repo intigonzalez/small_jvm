@@ -147,6 +147,13 @@ void* JvmJit::getStaticFieldAddress(std::string& class_name,
 	return ObjectHandler::instance()->getMemberAddress(ref, fieldName);
 }
 
+bool JvmJit::checkcast_impl(ClassFile* S, string& T)
+{
+	std::string S_name = S->getClassName();
+	// FIXME: these are not all the case
+	return loader->IsSubclass(S_name, T);
+}
+
 JvmJit* JvmJit::instance()
 {
 	if (!m_JvmJit) {

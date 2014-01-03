@@ -6,6 +6,10 @@ javac */*.java
 # compile the helper program
 javac ExpectedResultCreator.java
 
+# counters for number of succeded and failed tests
+COUNTER_PASS=$((COUNTER+1))
+COUNTER_FAIL=0
+
 # iterate over directories
 for gtc in * ; do
 	if [ -d "$gtc" ] ; then
@@ -26,8 +30,10 @@ for gtc in * ; do
 				../Debug/vm2 -t $t $tc /home/inti/programs/cp99/lib/ > $o # 2> $o
 				if diff $e $o > /dev/null ; then
 					echo -e "\t\t$t -> \e[1;32mSUCCESS\e[0m"
+					COUNTER_PASS=$((COUNTER_PASS+1))
 				else
 					echo -e "\t\t$t -> \e[1;31mFAIL\e[0m"
+					COUNTER_FAIL=$((COUNTER_FAIL+1))
 				fi
 			done	
 		done
@@ -35,3 +41,6 @@ for gtc in * ; do
 		rm *.bin *.asm 
 	fi
 done
+
+# print general statistics
+echo -e "\e[1;32m${COUNTER_PASS} \e[1;31m${COUNTER_FAIL}\e[0m"
