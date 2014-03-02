@@ -15,9 +15,6 @@
 #include <iostream>
 #include <set>
 
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/tuple/tuple.hpp>
-
 namespace jit {
 enum value_scope {Constant, Local, Field, Temporal, Useless, Register, Label};
 enum value_type {Integer, Byte, ObjRef,ArrRef, Void, CharType};
@@ -65,88 +62,70 @@ struct Quadr {
 	jit_value op1;
 	jit_value op2;
 	jit_value res;
-	int label; // -1 if no label is required
-	friend std::ostream& operator<< (std::ostream &out, Quadr &q);
+
+	std::string toString() {
+		std::string s;
+
+		if (op == PUSH_ARG)
+			s = pretty_printing[op] + (" " + op1.toString());
+		else if (op == IINC) {
+			s = op1.toString() + "<- " + op1.toString()
+					+ pretty_printing[op] + op2.toString();
+		}
+		else if (op == CRAZY_OP) {
+			s = res.toString() + "(<-) " + op1.toString();
+		}
+		else if (op >= PLUS && op <= SAR) {
+			s = res.toString() + "<- " + op1.toString()
+					+ pretty_printing[op] + op2.toString();
+		}
+		else if (op >= JGE && op <= JEQ) {
+			s = "if " + op1.toString() + pretty_printing[op]
+			                + op2.toString() + " goto " + res.toString();
+		}
+		else if (op == ASSIGN)
+			s = res.toString() + "<- " + op1.toString();
+		else if (op == MOV_FROM_ADDR)
+			s = res.toString() + "<- (" + op1.toString() + ")";
+		else if (op == MOV_TO_ADDR)
+			s = "(" + op1.toString() + ")<- " + op2.toString();
+		else if (op == OP_RETURN)
+			s = pretty_printing[op] + (" " + op1.toString());
+		else if (op == GOTO)
+			s = pretty_printing[op] + (" " + res.toString());
+		else {
+			s += '(';
+			s += pretty_printing[op];
+			s += ",";
+			s += op1.toString();
+			s += ",";
+			s += op2.toString() + "," + res.toString() + ")" + "\\n";
+		}
+		return s;
+	}
 };
 
 struct BasicBlock {
+	int label; // a basic block may have a label, this value is -1 if no label exist
 	std::vector<Quadr> q;
-};
 
-//Define the graph using those classes
-typedef boost::adjacency_list<boost::listS, boost::vecS, boost::directedS, BasicBlock* > ControlFlowGraph;
-//Some typedefs for simplicity
-typedef boost::graph_traits<ControlFlowGraph>::vertex_descriptor vertex_t;
-typedef boost::graph_traits<ControlFlowGraph>::edge_descriptor edge_t;
+	BasicBlock():label(-1) { }
 
-struct Routine {
-	unsigned countOfParameters;
-	ControlFlowGraph g;
-	std::vector<Quadr> q;
-	int last_temp;
-	std::set<int> freeTmp;
+	BasicBlock(int l):label(l) { }
 
-	Routine(unsigned countOfParameters);
-
-	Routine(Routine&& r) {
-		g = r.g; r.g = {};
-		countOfParameters = r.countOfParameters;
-		q = r.q; r.q = {};
-		last_temp = r.last_temp;
-		freeTmp = r.freeTmp; r.freeTmp = {};
-	}
-
-	Routine() {
-		last_temp = 0;
-		countOfParameters = 0;
-	}
-
-	/**
-	 * Arithmetic operations
-	 */
-	jit_value jit_binary_operation(OP_QUAD op, jit_value op1, jit_value op2);
-
-	/**
-	 * Used to emit regular quadruplos
-	 */
-	jit_value jit_regular_operation(OP_QUAD op, jit_value op1, jit_value op2, value_type result_type);
-	void jit_regular_operation(OP_QUAD op, jit_value op1, jit_value op2 =
-	                useless_value, jit_value resultRef = useless_value);
-
-	/**
-	 * Methods
-	 */
-	void jit_return_int(jit_value r);
-	void jit_return_void(void);
-
-	/**
-	 * Assignments
-	 */
-	void jit_assign_local(jit_value local, jit_value v);
-	jit_value jit_copy(jit_value v);
-
-	/**
-	 * Utils
-	 */
-	int getTempId();
-
-	void buildControlFlowGraph();
-	bool endWithJmpTo(vertex_t src, vertex_t dst) {
-		BasicBlock* bbSrc = g[src];
-		if (bbSrc->q[bbSrc->q.size()-1].res.meta.scope == Label) {
-			// maybe
-			int v = bbSrc->q[bbSrc->q.size()-1].res.value;
-			BasicBlock* bbDst = g[dst];
-			return (bbDst->q[0].label == v);
+	std::string getVizLabel() {
+		std::string s("");
+		s += "\\l";
+		if (label != -1) {
+			s += "LA";
+			s += std::to_string(label);
+			s += ":";
+			s += "\\l";
 		}
-		return false;
+		for (unsigned i = 0; i < q.size(); ++i)
+			s+= q[i].toString() + "\\l";
+		return s;
 	}
-
-	/**
-	 * Debug
-	 */
-	void print();
-	void print_in_graphviz();
 };
 
 /**

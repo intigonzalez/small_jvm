@@ -32,13 +32,180 @@ JitCompiler::~JitCompiler() {
 void* JitCompiler::compile(ClassFile* cf, MethodInfo* method){
 	// first generate IR with quadruplos
 	Routine procedure = toQuadruplus(cf, method);
-	// build control-flow graph
-	procedure.buildControlFlowGraph();
-	procedure.print();
-
 	Simplex86Generator generator;
 	void* addr = generator.generate(procedure, codeSection);
 	return addr;
+}
+
+void JitCompiler::cfg(ClassFile* cf, MethodInfo* method, jvm::CFG& cfg) {
+	vector< pair< int, int > > bytecode2qua;
+	set<int> basicBlocksStart;
+	int32_t branch1;
+	unsigned char branch2;
+
+	basicBlocksStart.insert(0);
+
+	CodeAttribute* code = method->code;
+	int index = 0;
+	while (index < code->code_length) {
+		unsigned char opcode = (unsigned char) (code->code[index]);
+		switch (opcode) {
+			case aconst_null:
+			case aload_0:
+			case aload_1:
+			case aload_2:
+			case aload_3:
+			case astore_0:
+			case astore_1:
+			case astore_2:
+			case astore_3:
+			case iconst_m1:
+			case iconst_0:
+			case iconst_1:
+			case iconst_2:
+			case iconst_3:
+			case iconst_4:
+			case iconst_5:
+			case istore_0:
+			case istore_1:
+			case istore_2:
+			case istore_3:
+			case iastore:
+			case castore:
+			case bastore:
+			case iload_0:
+			case iload_1:
+			case iload_2:
+			case iload_3:
+			case i2c:
+			case i2b:
+			case iaload:
+			case caload:
+			case baload:
+			case ineg:
+			case iadd:
+			case isub:
+			case imul:
+			case idiv:
+			case irem:
+			case ishl:
+			case ishr:
+			case op_pop:
+			case op_return:
+			case ireturn:
+			case arraylength:
+			case op_dup:
+				index++;
+				break;
+			case istore:
+			case aload:
+			case iload:
+			case bipush:
+			case ldc:
+			case op_newarray:
+				index += 2;
+				break;
+			case if_icmpge:
+			case if_icmpeq:
+			case if_icmple:
+			case if_icmplt:
+			case if_icmpgt:
+			case if_icmpne:
+				branch1 = (char) code->code[index + 1];
+				branch2 = (unsigned char)code->code[index + 2];
+				branch1 = index + ((branch1 << 8) | branch2);
+				basicBlocksStart.insert(branch1);
+				bytecode2qua.push_back( pair<int, int>(index, branch1));
+				basicBlocksStart.insert(index + 3);
+				index += 3;
+				break;
+			case ifne:
+			case ifle:
+			case iflt:
+			case ifge:
+			case ifeq:
+			case ifgt:
+				branch1 = (char) code->code[index + 1];
+				branch2 = (unsigned char)code->code[index + 2];
+				branch1 = index + ((branch1 << 8) | branch2);
+				basicBlocksStart.insert(branch1);
+				bytecode2qua.push_back( pair<int, int>(index, branch1));
+				basicBlocksStart.insert(index + 3);
+				index += 3;
+				break;
+			case iinc:
+			case invokestatic:
+			case invokespecial:
+			case invokevirtual:
+				index += 3;
+				break;
+			case op_goto:
+				branch1 = (char) code->code[index + 1];
+				branch2 = (unsigned char)code->code[index + 2];
+				branch1 = index + ((branch1 << 8) | branch2);
+				basicBlocksStart.insert(branch1);
+				bytecode2qua.push_back( pair<int, int>(index, branch1));
+				index+=3;
+				break;
+			case op_new:
+				index += 3;
+				break;
+			case op_dup2:
+				// FIXME : LONG and Double, see jvm specification
+				index++;
+				break;
+			case op_dup_x2:
+				// FIXME : Long and double, see jvm specification
+				index++;
+				break;
+			case putfield:
+			case putstatic:
+			case getfield:
+			case getstatic:
+			case sipush:
+			case checkcast:
+				index += 3;
+				break;
+			default:
+				cerr << "Unknown opcode " << (unsigned) (unsigned char) code->code[index] << endl;
+//						<< " at " << cf->getClassName() << ":" << method_name << ":" << index << endl;
+				throw new exception();
+				break;
+		} // switch
+	} // while
+
+	for (auto& label : basicBlocksStart)
+		cfg.addVertex(new BasicBlock(label));
+
+	for (vector< pair< int, int > >::iterator it = bytecode2qua.begin(), itEnd = bytecode2qua.end() ; it != itEnd ; ++it){
+		pair<int,int> p = *it;
+		int src = p.first; // src of a jump in bytecode index
+		int trg = p.second; // trg of jump in bytecode index
+		std::set<int>::iterator it2 = basicBlocksStart.lower_bound(src);
+		if (it2 != basicBlocksStart.begin() && (*it2 != src))
+			--it2;
+		int idxSrc = cfg.getBBWithLabel(*it2);
+		int idxTrg = cfg.getBBWithLabel(trg);
+		jvm::CFG::edgeType e(idxTrg, jvm::cfg_transition_type::jmp_transition);
+		cfg.edges[idxSrc].push_back(e);
+	}
+
+	for (auto& label : basicBlocksStart)
+		if (label >= 3) {
+			int src = label - 3; // FIXME, maybe just by chance the value is opcode goto
+			unsigned char opcode = (unsigned char)method->code->code[src];
+			if (opcode != op_goto) {
+				// there is a natural block edge
+				src = label - 1;
+				std::set<int>::iterator it2 = basicBlocksStart.lower_bound(src);
+				if (it2 != basicBlocksStart.begin() && (*it2 != src))
+					--it2;
+				int idxSrc = cfg.getBBWithLabel(*it2);
+				int idxTrg = cfg.getBBWithLabel(label);
+				jvm::CFG::edgeType e(idxTrg, jvm::cfg_transition_type::code_order_transition);
+				cfg.edges[idxSrc].push_back(e);
+			}
+		}
 }
 
 jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
@@ -47,8 +214,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 	set<int> labels;
 	jit_value v1,v2,v, vTmp1, vTmp2;
 //	Objeto ref;
-	jint a, b;
-	int32_t branch1;
+	int32_t a, b, branch1;
 	unsigned char branch2;
 	int32_t i2;
 	int count, count2;
@@ -56,12 +222,17 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 	Clase* javaClass;
 	std::string sTmp;
 
-
 	std::string currentMethodDescriptor = cf->getUTF(method->descriptor_index);
 	int argumentsCount = JVMSpecUtils::countOfParameter(currentMethodDescriptor);
 	if ((method->access_flags & ACC_STATIC) == 0)
 		argumentsCount++;
 	jit::Routine procedure(argumentsCount);
+
+	cfg(cf, method, procedure.cfg);
+
+	std::vector<int> blocksStart;
+	for (unsigned i = 0 ; i < procedure.cfg.nodes.size(); ++i)
+		blocksStart.push_back(procedure.cfg.nodes[i]->label);
 
 //	long long l;
 	OP_QUAD oper;
@@ -70,10 +241,14 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 	CodeAttribute* code = method->code;
 	if (!code) return procedure;
 	int index = 0;
+	int nextBlockStartIndex = 0;
 	while (index < code->code_length) {
+		if (nextBlockStartIndex< blocksStart.size() && blocksStart[nextBlockStartIndex] == index) {
+			branch1 = procedure.cfg.getBBWithLabel(index);
+			procedure.currentBB = procedure.cfg.nodes[branch1];
+			nextBlockStartIndex++;
+		}
 		unsigned char opcode = (unsigned char) (code->code[index]);
-		int nextIndex = procedure.q.size();
-		bytecode2qua.push_back( pair<int, int>(index, nextIndex));
 		switch (opcode) {
 			case aconst_null:
 				values.push(jit_null());
@@ -82,7 +257,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case aload:
 				b = (unsigned char)code->code[index+1];
 				values.push(jit_local_field(b, ObjRef));
-//					push(getLocalRef(b));
 				index += 2;
 				break;
 			case aload_0:
@@ -92,7 +266,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				b = opcode - aload_0;
 				values.push(jit_local_field(b, ObjRef));
 				index++;
-//					push(getLocalRef(b));
 				break;
 			case astore_0:
 			case astore_1:
@@ -158,8 +331,12 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				default:
 					count = 2;
 				}
-				vTmp2 = procedure.jit_binary_operation(SHL,
+
+				if (count > 0)
+					vTmp2 = procedure.jit_binary_operation(SHL,
 						v2, jit_constant(count)); // multiply for array element's size
+				else
+					vTmp2 = v2;
 
 				vTmp1 = procedure.jit_binary_operation(PLUS,
 						vTmp1, vTmp2); // final address
@@ -183,14 +360,6 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				values.push(procedure.jit_copy(v1));
 				index += 2;
 				break;
-//
-//					i2 = popI();
-//					ref = popRef();
-//					v.l = 0;
-//					ObjectHandler::instance()->getArrayElement(ref, i2, &v);
-//					push(v, CHAR);
-//					index++;
-//					break;
 			case i2c:
 				values.push(procedure.jit_binary_operation(AND,
 						values.pop(),
@@ -287,8 +456,11 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				} else if (opcode == baload)
 					count = 0;
 
-				vTmp2 = procedure.jit_binary_operation(SHL,
+				if (count > 0)
+					vTmp2 = procedure.jit_binary_operation(SHL,
 						v2, jit_constant(count)); // multiply for array element's size
+				else
+					vTmp2 = v2;
 
 				vTmp1 = procedure.jit_binary_operation(PLUS,
 						vTmp1, vTmp2); // final address
@@ -703,15 +875,10 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				break;
 		} // switch
 	} // while
-	for (auto& pa : labels){
-		vector< pair< int, int > >::iterator ja = std::lower_bound(bytecode2qua.begin(), bytecode2qua.end(), pa,
-				[] (pair<int, int>& pair, int v) {
-					return pair.first < v;
-				}
-		);
-		pair<int,int> p = *ja;
-		procedure.q[p.second].label = p.first;
-	}
+
+	// print graph
+	std::ofstream file(method_name + ".txt");
+	procedure.cfg.printGraphViz(file, method_name);
 	return procedure;
 }
 

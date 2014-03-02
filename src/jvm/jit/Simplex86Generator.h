@@ -8,7 +8,7 @@
 #ifndef SIMPLEX86GENERATOR_H_
 #define SIMPLEX86GENERATOR_H_
 
-#include "Quadru.h"
+
 
 #include <string>
 #include <set>
@@ -23,10 +23,13 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #include "../../utilities/TemporaryFile.h"
 #include "../../utilities/Logger.h"
 #include "../../utilities/ManyToMany.h"
+#include "Quadru.h"
+#include "Routine.h"
 
 
 #include "../down_calls.h"
@@ -207,12 +210,14 @@ template <class CodeSectionManager>
 void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager) {
 	// definition of involved variables
 	Vars variables(routine.countOfParameters, m2mRegisterVariable);
-	for (unsigned i = 0 ; i < routine.q.size(); i++) {
-		Quadr q = routine.q[i];
-		variables.addVariable(q.op1);
-		variables.addVariable(q.op2);
-		variables.addVariable(q.res);
-	}
+	for (auto& bb : routine.cfg)
+		for (unsigned i = 0 ; i < bb->q.size(); ++i) {
+			Quadr q = bb->q[i];
+			variables.addVariable(q.op1);
+			variables.addVariable(q.op2);
+			variables.addVariable(q.res);
+		}
+
 	// init memory buffer
 	void *buf = manager->nextAddress();
 	// open file
@@ -231,8 +236,8 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	functor.S() << "push esi\n";
 	functor.S() << "push edi\n";
 
-	// let remove the quad from the routine
-	routine.q.clear();
+	// TODO: let's remove the quad from the routine
+//	routine.q.clear();
 
 	// generate in order from the Control-Flow Graph
 	// FIXME : I'm doing big assumptions here
@@ -241,26 +246,28 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	// 	   the second edge will be the jump and the first one will be the next
 	//	   instruction (when the condition is false). This assumption holds for
 	//	   my method to build the Control-Flow Graph but it is not general.
-	std::vector<vertex_t> vec;
-	int n = boost::num_vertices(routine.g);
+	std::vector<int> vec;
+	int n = routine.cfg.nodes.size();
 	bool* mark = new bool[n];
 	for (int i = 0 ; i < n ; ++i)
 		mark[i] = false;
 	vec.push_back(0);
-	boost::graph_traits<ControlFlowGraph>::out_edge_iterator ai,ai_end;
-	std::vector<vertex_t>::iterator it;
+	std::vector<int>::iterator it;
 	while (!vec.empty()) {
-		vertex_t v0 = vec.front(); vec.erase(vec.begin());
+		int v0 = vec.front(); vec.erase(vec.begin());
 		mark[v0] = true;
 		LOG_DBG("Compiling Block", v0);
-		BasicBlock* bb = routine.g[v0];
+		BasicBlock* bb = routine.cfg.nodes[v0];
+		if (bb->label != -1)
+			functor.S() << "LA" << bb->label << ":\n";
 		generateBasicBlock(variables, bb);
-		for (tie(ai, ai_end) = boost::out_edges(v0, routine.g) ; ai != ai_end ; ++ai) {
-			vertex_t v1 = (*ai).m_target;
+		for (jvm::CFG::iteratorEdges ai = routine.cfg.outputs_begin(v0),
+				ai_end = routine.cfg.outputs_end(v0);
+				ai != ai_end ; ++ai) {
+			int v1 = (*ai).trg;
 			if (!mark[v1]) {
-				bool isJmp = routine.endWithJmpTo(v0, v1);
 				it =std::find(vec.begin(), vec.end(), v1);
-				if (isJmp) {
+				if ((*ai).info == jvm::jmp_transition) {
 					// it is a jump, no priority
 					if (it == vec.end())
 						vec.push_back(v1);

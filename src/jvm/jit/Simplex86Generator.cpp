@@ -5,9 +5,6 @@
  *      Author: inti
  */
 
-#include "Simplex86Generator.h"
-#include "Quadru.h"
-
 #include <set>
 #include <map>
 #include <vector>
@@ -17,8 +14,11 @@
 #include <bitset>
 #include <fstream>
 #include <cstdio>
+#include <assert.h>
 
 #include "../down_calls.h"
+#include "Simplex86Generator.h"
+#include "Quadru.h"
 
 using namespace std;
 
@@ -185,8 +185,6 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 	std::bitset<6> used;
 
 	for (unsigned i = 0; i < bb->q.size(); i++) {
-		if (bb->q[i].label != -1)
-			functor.S() << "LA" << bb->q[i].label << ":\n";
 
 		int ope = bb->q[i].op;
 		jit_value op1 = bb->q[i].op1;
