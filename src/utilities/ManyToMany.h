@@ -2,6 +2,7 @@
 #define __MANY_TO_MANY__
 
 #include <vector>
+#include <algorithm>
 
 #include <forward_list>
 
