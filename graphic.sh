@@ -1,1 +1,1 @@
-dot -Tpng -opepe.png in.txt
+dot -Tpng -opepe.png $1
