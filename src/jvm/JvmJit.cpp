@@ -55,7 +55,6 @@ void* JvmJit::compile(ClassFile* cf, MethodInfo* method)
 	if (method->address)
 		addr = method->address;
 	else {
-//		cout << "Compiling : " << cf->getClassName() << ":" << cf->getUTF(method->name_index) << '\n';
 		// for now just one thread
 		auto result =pool.get()->enqueue(
 		                                [] (ClassFile* cf, MethodInfo* method, jit::CodeSectionMemoryManager* section) ->void* {
@@ -68,14 +67,8 @@ void* JvmJit::compile(ClassFile* cf, MethodInfo* method)
 		method->cleanCode();
 
 		LOG_DBG("Method ", cf->getClassName(),":",cf->getUTF(method->name_index), " compiled");
-//		cout << "Method " << cf->getClassName() << ":"
-//			                << cf->getUTF(method->name_index) << " compiled"
-//			                << endl;
 	}
 	LOG_DBG("Method ", cf->getClassName(),":",cf->getUTF(method->name_index), " is in address ", addr);
-//	cout << "Method " << cf->getClassName() << ":"
-//	                << cf->getUTF(method->name_index) << " is in address : "
-//	                << addr << endl;
 	return addr;
 }
 
