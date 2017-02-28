@@ -41,10 +41,10 @@ public:
 
 	void printGraphViz(std::ostream& output, std::string& graph_name) {
 		output << "digraph " << graph_name << " {\n";
-		for (int i = 0 ; i < nodes.size() ; i++)
+		for (size_t i = 0 ; i < nodes.size() ; i++)
 			output << "\t" << "v" << i << " [labeljust=l,label=\"" << nodes[i]->getVizLabel() <<"\",shape=box];\n";
-		for (int i = 0 ; i < nodes.size() ; i++)
-			for (int j = 0 ; j < edges[i].size() ; ++j) {
+		for (size_t i = 0 ; i < nodes.size() ; i++)
+			for (size_t j = 0 ; j < edges[i].size() ; ++j) {
 				output << "\t" << "v" << i << "-> v" << edges[i][j].trg << ";\n";
 			}
 		output << "}\n";

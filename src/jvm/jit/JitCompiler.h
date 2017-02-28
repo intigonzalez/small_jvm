@@ -21,13 +21,13 @@ public:
 	JitCompiler(jit::CodeSectionMemoryManager* section);
 	virtual ~JitCompiler();
 
-	void* compile(ClassFile* cf, MethodInfo* method);
+	void* compile(ClassFile& cf, MethodInfo& method);
 private:
-	jit::Routine toQuadruplus(ClassFile* cf, MethodInfo* method);
-	void cfg(ClassFile* cf, MethodInfo* method, jvm::CFG& cfg);
-	jit::jit_value getConstant(ClassFile* cf, int16_t index, CodeAttribute* caller);
+	jit::Routine toQuadruplus(ClassFile& cf, MethodInfo& method);
+	void cfg(ClassFile& cf, MethodInfo& method, jvm::CFG& cfg);
+	jit::jit_value getConstant(ClassFile& cf, int16_t index, CodeAttribute* caller);
 
-	MethodInfo* getMethodToCall(ClassFile* cf, int16_t idx);
+	MethodInfo& getMethodToCall(ClassFile& cf, int16_t idx);
 
 	jit::CodeSectionMemoryManager* codeSection;
 };

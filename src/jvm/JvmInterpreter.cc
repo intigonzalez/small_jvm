@@ -12,6 +12,8 @@
 #include "down_calls.h"
 #include "../jvmclassfile/JVMSpecUtils.h"
 
+#include <stdint.h>
+
 using namespace std;
 
 namespace jvm {
@@ -22,7 +24,7 @@ namespace jvm {
 	JvmInterpreter::~JvmInterpreter() {
 	}
 
-	void JvmInterpreter::initiateClass(ClassFile* cf) {
+	void JvmInterpreter::initiateClass(ClassFile& cf) {
 		// do something
 	}
 
@@ -32,22 +34,22 @@ namespace jvm {
 		push(obj);
 	}
 
-	void JvmInterpreter::execute(ClassFile* cf, MethodInfo* method, std::function<void(JvmExecuter*, void* addr)> fn) {
+	void JvmInterpreter::execute(ClassFile& cf, MethodInfo& method, std::function<void(JvmExecuter*, void* addr)> fn) {
 		RuntimeValue v;
 		Objeto ref;
-		JavaDataType type;
-		jint a, b;
+		// JavaDataType type;
+		jint b;
 		int32_t branch1;
-		unsigned char branch2;
+		uint8_t branch2;
 		int32_t i2;
 		long long l;
 //		AttributeInfo* ai = method->attributes[0];
-		string method_name = cf->getUTF(method->name_index);
-		CodeAttribute* code = method->code;
+		string method_name = cf.getUTF(method.name_index);
+		CodeAttribute* code = method.code;
 		if (code != 0) {
 			int index = 0;
 			while (index < code->code_length) {
-				unsigned char opcode = (unsigned char) (code->code[index]);
+				uint8_t opcode = (uint8_t) (code->code[index]);
 				switch (opcode) {
 					case aconst_null:
 						v.ref = 0;
@@ -55,7 +57,7 @@ namespace jvm {
 						index++;
 						break;
 					case aload:
-						b = (unsigned char)code->code[index+1];
+						b = (uint8_t)code->code[index+1];
 						push(getLocalRef(b));
 						index += 2;
 						break;
@@ -76,7 +78,7 @@ namespace jvm {
 						index++;
 						break;
 					case astore:
-						b = (unsigned char)code->code[index+1];
+						b = (uint8_t)code->code[index+1];
 						setLocal(b, popRef());
 						index += 2;
 						break;
@@ -153,7 +155,7 @@ namespace jvm {
 //						a = popI();
 //						if (a >= b) {
 //							branch1 = (char) code->code[index + 1];
-//							branch2 = (unsigned char)code->code[index + 2];
+//							branch2 = (uint8_t)code->code[index + 2];
 //							index += (branch1 << 8) | branch2;
 //						} else
 //							index += 3;
@@ -163,7 +165,7 @@ namespace jvm {
 //						a = popI();
 //						if (a != b) {
 //							branch1 =(char)code->code[index + 1];
-//							branch2 = (unsigned char)code->code[index + 2];
+//							branch2 = (uint8_t)code->code[index + 2];
 //							index += (branch1 << 8) | branch2;
 //						} else
 //							index += 3;
@@ -172,7 +174,7 @@ namespace jvm {
 //						a = popI();
 //						if (a>=0) {
 //							branch1 = (char) code->code[index + 1];
-//							branch2 = (unsigned char)code->code[index + 2];
+//							branch2 = (uint8_t)code->code[index + 2];
 //							index += (branch1 << 8) | branch2;
 //						} else
 //							index += 3;
@@ -181,7 +183,7 @@ namespace jvm {
 //						a = popI();
 //						if (!a) {
 //							branch1 = (char) code->code[index + 1];
-//							branch2 = (unsigned char)code->code[index + 2];
+//							branch2 = (uint8_t)code->code[index + 2];
 //							index += (branch1 << 8) | branch2;
 //						} else
 //							index += 3;
@@ -190,7 +192,7 @@ namespace jvm {
 //						a = popI();
 //						if (a) {
 //							branch1 = (char) code->code[index + 1];
-//							branch2 = (unsigned char)code->code[index + 2];
+//							branch2 = (uint8_t)code->code[index + 2];
 //							index += (branch1 << 8) | branch2;
 //						} else
 //							index += 3;
@@ -199,7 +201,7 @@ namespace jvm {
 //						ref = popRef();
 //						if (!ref) {
 //							branch1 = (char) code->code[index + 1];
-//							branch2 = (unsigned char)code->code[index + 2];
+//							branch2 = (uint8_t)code->code[index + 2];
 //							index += (branch1 << 8) | branch2;
 //						} else
 //							index += 3;
@@ -208,7 +210,7 @@ namespace jvm {
 //						ref = popRef();
 //						if (ref) {
 //							branch1 = (char) code->code[index + 1];
-//							branch2 = (unsigned char)code->code[index + 2];
+//							branch2 = (uint8_t)code->code[index + 2];
 //							index += (branch1 << 8) | branch2;
 //						} else
 //							index += 3;
@@ -239,32 +241,32 @@ namespace jvm {
 //						break;
 //					case iinc:
 //						a = code->code[index + 2];
-//						b = getLocalI((unsigned char) code->code[index + 1]);
-//						setLocal((unsigned char) code->code[index + 1], b + a);
+//						b = getLocalI((uint8_t) code->code[index + 1]);
+//						setLocal((uint8_t) code->code[index + 1], b + a);
 //						index += 3;
 //						break;
 //					case op_goto:
 //						branch1 = (int32_t) code->code[index + 1];
-//						branch2 = (unsigned char)code->code[index + 2];
+//						branch2 = (uint8_t)code->code[index + 2];
 //						index += (branch1 << 8) | branch2;
 //						break;
 					case invokestatic:
-						branch1 = (unsigned char) code->code[index + 1];
-						branch2 = (unsigned char) code->code[index + 2];
+						branch1 = (uint8_t) code->code[index + 1];
+						branch2 = (uint8_t) code->code[index + 2];
 						i2 = (branch1 << 8) | branch2;
 						generateStaticCall(cf, i2, code);
 						index += 3;
 						break;
 					case invokespecial:
-						branch1 = (unsigned char) code->code[index + 1];
-						branch2 = (unsigned char)code->code[index + 2];
+						branch1 = (uint8_t) code->code[index + 1];
+						branch2 = (uint8_t)code->code[index + 2];
 						i2 = (branch1 << 8) | branch2;
 						invokeSpecial(cf, i2, code);
 						index += 3;
 						break;
 					case invokevirtual: // FIXME like the other for now, this is wrong
-						branch1 = (unsigned char) code->code[index + 1];
-						branch2 = (unsigned char)code->code[index + 2];
+						branch1 = (uint8_t) code->code[index + 1];
+						branch2 = (uint8_t)code->code[index + 2];
 						i2 = (branch1 << 8) | branch2;
 						invokeSpecial(cf, i2, code);
 						index += 3;
@@ -279,8 +281,8 @@ namespace jvm {
 //						return;
 //						break;
 					case op_new:
-						branch1 = (unsigned char) code->code[index + 1];
-						branch2 = (unsigned char)code->code[index + 2];
+						branch1 = (uint8_t) code->code[index + 1];
+						branch2 = (uint8_t)code->code[index + 2];
 						i2 = (branch1 << 8) | branch2;
 						createNewObject(cf, i2);
 						index += 3;
@@ -302,49 +304,49 @@ namespace jvm {
 //						index++;
 //						break;
 					case putfield:
-						branch1 = (unsigned char) code->code[index + 1];
-						branch2 = (unsigned char) code->code[index + 2];
+						branch1 = (uint8_t) code->code[index + 1];
+						branch2 = (uint8_t) code->code[index + 2];
 						i2 = (branch1 << 8) | branch2;
 						fieldAccess(cf, i2);
 						index += 3;
 						break;
 					case putstatic:
-						branch1 = (unsigned char) code->code[index + 1];
-						branch2 = (unsigned char)code->code[index + 2];
+						branch1 = (uint8_t) code->code[index + 1];
+						branch2 = (uint8_t)code->code[index + 2];
 						i2 = (branch1 << 8) | branch2;
 						fieldStaticAccess(cf, i2);
 						index += 3;
 						break;
 					case getfield:
-						branch1 = (unsigned char) code->code[index + 1];
-						branch2 = (unsigned char)code->code[index + 2];
+						branch1 = (uint8_t) code->code[index + 1];
+						branch2 = (uint8_t)code->code[index + 2];
 						i2 = (branch1 << 8) | branch2;
 						fieldAccess(cf, i2, false);
 						index += 3;
 						break;
 					case getstatic:
-						branch1 = (unsigned char) code->code[index + 1];
-						branch2 = (unsigned char)code->code[index + 2];
+						branch1 = (uint8_t) code->code[index + 1];
+						branch2 = (uint8_t)code->code[index + 2];
 						i2 = (branch1 << 8) | branch2;
 						fieldStaticAccess(cf, i2, false);
 						index += 3;
 						break;
 //					case ldc:
-//						i2 = (unsigned char)code->code[index + 1];
+//						i2 = (uint8_t)code->code[index + 1];
 //						putConstantInStack(cf, i2, code);
 //						index += 2;
 //						break;
 					case sipush:
-						branch1 = (unsigned char) code->code[index + 1];
-						branch2 = (unsigned char)code->code[index + 2];
+						branch1 = (uint8_t) code->code[index + 1];
+						branch2 = (uint8_t)code->code[index + 2];
 						i2 = (branch1 << 8) | branch2;
 						push(i2);
 						index += 3;
 						break;
 					default:
-						cerr << "Unknown opcode " << (unsigned) (unsigned char) code->code[index]
-								<< " at " << cf->getClassName() << ":" << method_name << ":" << index << endl;
-						throw new exception();
+						cerr << "Unknown opcode " << (unsigned) (uint8_t) code->code[index]
+								<< " at " << cf.getClassName() << ":" << method_name << ":" << index << endl;
+						throw runtime_error("Unknown opcode");
 						break;
 				} // switch
 			} // while
@@ -352,16 +354,15 @@ namespace jvm {
 		}
 	}
 
-	void JvmInterpreter::fieldAccess(ClassFile* cf, int16_t fieldRef, bool toWrite) {
-		CONSTANT_Fieldref_info* ci = (CONSTANT_Fieldref_info*)(cf->info[fieldRef - 1]);
+	void JvmInterpreter::fieldAccess(const ClassFile& cf, int16_t fieldRef, bool toWrite) {
+		CONSTANT_Fieldref_info* ci = (CONSTANT_Fieldref_info*)(cf.info[fieldRef - 1].get());
 		int16_t class_i = ci->class_index;
 		int16_t name_type = ci->name_and_type_index;
-		CONSTANT_Class_info* clase = (CONSTANT_Class_info*)(cf->info[class_i - 1]);
-		CONSTANT_NameAndType_info* name = (CONSTANT_NameAndType_info*)(cf->info[name_type
-				- 1]);
-		string class_name = cf->getUTF(clase->name_index);
-		string field_name = cf->getUTF(name->name_index);
-		string fdescription = cf->getUTF(name->descriptor_index);
+		auto clase = (CONSTANT_Class_info*)(cf.info[class_i - 1].get());
+		auto name = (CONSTANT_NameAndType_info*)(cf.info[name_type - 1].get());
+		string class_name = cf.getUTF(clase->name_index);
+		string field_name = cf.getUTF(name->name_index);
+		string fdescription = cf.getUTF(name->descriptor_index);
 		loadAndInit(class_name);
 		if (toWrite) {
 			RuntimeValue value = top();
@@ -385,16 +386,15 @@ namespace jvm {
 
 	}
 
-	void JvmInterpreter::fieldStaticAccess(ClassFile* cf, int16_t fieldRef, bool toWrite) {
-		CONSTANT_Fieldref_info* ci = (CONSTANT_Fieldref_info*)(cf->info[fieldRef - 1]);
+	void JvmInterpreter::fieldStaticAccess(const ClassFile& cf, int16_t fieldRef, bool toWrite) {
+		CONSTANT_Fieldref_info* ci = (CONSTANT_Fieldref_info*)(cf.info[fieldRef - 1].get());
 		int16_t class_i = ci->class_index;
 		int16_t name_type = ci->name_and_type_index;
-		CONSTANT_Class_info* clase = (CONSTANT_Class_info*)(cf->info[class_i - 1]);
-		CONSTANT_NameAndType_info* name = (CONSTANT_NameAndType_info*)(cf->info[name_type
-				- 1]);
-		string class_name = cf->getUTF(clase->name_index);
-		string field_name = cf->getUTF(name->name_index);
-		string fdescription = cf->getUTF(name->descriptor_index);
+		auto clase = (CONSTANT_Class_info*)(cf.info[class_i - 1].get());
+		auto name = (CONSTANT_NameAndType_info*)(cf.info[name_type - 1].get());
+		string class_name = cf.getUTF(clase->name_index);
+		string field_name = cf.getUTF(name->name_index);
+		string fdescription = cf.getUTF(name->descriptor_index);
 		loadAndInit(class_name);
 		if (toWrite) {
 			RuntimeValue value = top();
@@ -420,28 +420,26 @@ namespace jvm {
 
 	}
 
-	void JvmInterpreter::generateStaticCall(ClassFile* cf, int32_t methodReference,
+	void JvmInterpreter::generateStaticCall(ClassFile& cf, int32_t methodReference,
 			CodeAttribute* caller) {
-		Constant_Info * cii = cf->info[methodReference- 1];
+		Constant_Info * cii = cf.info[methodReference- 1].get();
 		CONSTANT_Methodref_info* ci = (CONSTANT_Methodref_info*)(cii);
 		int16_t class_i = ci->class_index;
 		int16_t name_type = ci->name_and_type_index;
-		CONSTANT_Class_info* clase = (CONSTANT_Class_info*)(cf->info[class_i - 1]);
-		CONSTANT_NameAndType_info* name = (CONSTANT_NameAndType_info*)(cf->info[name_type
-				- 1]);
-		string class_name = cf->getUTF(clase->name_index);
-		string method_name = cf->getUTF(name->name_index);
-		string method_description = cf->getUTF(name->descriptor_index);
-		ClassFile* tmp = loader->getClass(class_name.c_str());
-		int16_t method_index = tmp->getCompatibleMethodIndex(method_name.c_str(),
+		CONSTANT_Class_info* clase = (CONSTANT_Class_info*)(cf.info[class_i - 1].get());
+		CONSTANT_NameAndType_info* name = (CONSTANT_NameAndType_info*)(cf.info[name_type - 1].get());
+		string class_name = cf.getUTF(clase->name_index);
+		string method_name = cf.getUTF(name->name_index);
+		string method_description = cf.getUTF(name->descriptor_index);
+		ClassFile& tmp = loader->getClass(class_name);
+		int16_t method_index = tmp.getCompatibleMethodIndex(method_name.c_str(),
 				method_description.c_str());
-		MethodInfo* mi = tmp->methods[method_index];
-		if (mi->access_flags & ACC_NATIVE) {
-			cerr << "Native method call." << endl << "Calling class : " << cf->getClassName() << endl << "Method Called : " << class_name << "." << method_name << endl;
-			throw new exception();
+		auto method = tmp.methods[method_index];
+		if (method.access_flags & ACC_NATIVE) {
+			cerr << "Native method call." << endl << "Calling class : " << cf.getClassName() << endl << "Method Called : " << class_name << "." << method_name << endl;
+			throw runtime_error("Native method class. Not implemented");
 		}
-//		AttributeInfo* ai = mi->attributes[0];
-		CodeAttribute* code = mi->code;
+		CodeAttribute* code = method.code;
 		// parameters
 		// Now the amazing call, jajaja
 		newFrame(caller->max_locals);
@@ -454,28 +452,26 @@ namespace jvm {
 			pop();
 			setLocal(count - i - 1, type, v);
 		}
-		execute(tmp, mi, [](JvmExecuter* exec, void * addr) { });
+		execute(tmp, method, [](JvmExecuter* exec, void * addr) { });
 		exitFrame(caller->max_locals, code->max_locals);
 	}
 
-	void JvmInterpreter::invokeSpecial(ClassFile* cf, int32_t methodReference, CodeAttribute* caller) {
+	void JvmInterpreter::invokeSpecial(ClassFile& cf, int32_t methodReference, CodeAttribute* caller) {
 		// FIXME : lots of problems here, see jvm7 reference
-		CONSTANT_Methodref_info* ci = (CONSTANT_Methodref_info*)(cf->info[methodReference
-				- 1]);
+		CONSTANT_Methodref_info* ci = (CONSTANT_Methodref_info*)(cf.info[methodReference - 1].get());
 		int16_t class_i = ci->class_index;
 		int16_t name_type = ci->name_and_type_index;
-		CONSTANT_Class_info* clase = (CONSTANT_Class_info*)(cf->info[class_i - 1]);
-		CONSTANT_NameAndType_info* name = (CONSTANT_NameAndType_info*)(cf->info[name_type
-				- 1]);
-		string class_name = cf->getUTF(clase->name_index);
-		string method_name = cf->getUTF(name->name_index);
-		string method_description = cf->getUTF(name->descriptor_index);
-		ClassFile* tmp = loadAndInit(class_name);
-		int16_t method_index = tmp->getCompatibleMethodIndex(method_name.c_str(),
+		auto clase = (CONSTANT_Class_info*)(cf.info[class_i - 1].get());
+		auto name = (CONSTANT_NameAndType_info*)(cf.info[name_type - 1].get());
+		string class_name = cf.getUTF(clase->name_index);
+		string method_name = cf.getUTF(name->name_index);
+		string method_description = cf.getUTF(name->descriptor_index);
+		ClassFile& tmp = loadAndInit(class_name);
+		int16_t method_index = tmp.getCompatibleMethodIndex(method_name.c_str(),
 				method_description.c_str());
-		MethodInfo* mi = tmp->methods[method_index];
+		auto method = tmp.methods[method_index];
 //		AttributeInfo* ai = mi->attributes[0];
-		CodeAttribute* code = mi->code;
+		CodeAttribute* code = method.code;
 		// parameters
 		// Now the amazing call, jajaja
 		newFrame(caller->max_locals);
@@ -488,14 +484,14 @@ namespace jvm {
 			pop();
 			setLocal(count - i - 1, type, v);
 		}
-		execute(tmp, mi, [](JvmExecuter* exec, void * addr) { });
+		execute(tmp, method, [](JvmExecuter* exec, void * addr) { });
 		exitFrame(caller->max_locals, code->max_locals);
 	}
 
-	void JvmInterpreter::createNewObject(ClassFile* cf, int32_t classRef) {
-		CONSTANT_Class_info* ci = (CONSTANT_Class_info*)(cf->info[classRef - 1]);
-		string class_name = cf->getUTF(ci->name_index);
-		ClassFile* tmp = loadAndInit(class_name);
+	void JvmInterpreter::createNewObject(const ClassFile& cf, int32_t classRef) {
+		CONSTANT_Class_info* ci = (CONSTANT_Class_info*)(cf.info[classRef - 1].get());
+		string class_name = cf.getUTF(ci->name_index);
+		ClassFile& tmp = loadAndInit(class_name);
 		Clase* clase = (Clase*) (buildInMemoryClass(tmp));
 		Objeto obj = ObjectHandler::instance()->newObject(clase);
 		push(obj);

@@ -36,11 +36,11 @@ JvmJit::~JvmJit()
 {
 }
 
-void JvmJit::initiateClass(ClassFile* cf)
+void JvmJit::initiateClass(ClassFile& cf)
 {
 	// FIXME : Execute this in new Threads
-	int16_t index = cf->getCompatibleMethodIndex("<clinit>", "()V");
-	if (index >= 0 && index < cf->methods_count)
+	int16_t index = cf.getCompatibleMethodIndex("<clinit>", "()V");
+	if (index >= 0 && index < cf.methods_count)
 		JvmExecuter::execute(cf, "<clinit>", "()V", this,
 		                [](JvmExecuter* exec, void * addr) {
 			                void(*mm)() = (void(*)())addr;
@@ -48,31 +48,29 @@ void JvmJit::initiateClass(ClassFile* cf)
 		                });
 }
 
-void* JvmJit::compile(ClassFile* cf, MethodInfo* method)
+void* JvmJit::compile(ClassFile& cf, MethodInfo& method)
 {
 	// fixme : Synchronize access to the method
-	void* addr = nullptr;
-	if (method->address)
-		addr = method->address;
-	else {
+	void* addr = method.address;
+	if (!addr) {
 		// for now just one thread
 		auto result =pool.get()->enqueue(
-		                                [] (ClassFile* cf, MethodInfo* method, jit::CodeSectionMemoryManager* section) ->void* {
-			                                jit::JitCompiler compiler(section);
-			                                return compiler.compile(cf, method);
-		                                }, cf, method, &codeSection);
+        [] (ClassFile& cf, MethodInfo& method, jit::CodeSectionMemoryManager* section) ->void* {
+          jit::JitCompiler compiler(section);
+          return compiler.compile(cf, method);
+        }, cf, method, &codeSection);
 
 		addr = result.get();
-		method->address = addr;
-		method->cleanCode();
+		method.address = addr;
+		method.cleanCode();
 
-		LOG_DBG("Method ", cf->getClassName(),":",cf->getUTF(method->name_index), " compiled");
+		LOG_DBG("Method ", cf.getClassName(),":",cf.getUTF(method.name_index), " compiled");
 	}
-	LOG_DBG("Method ", cf->getClassName(),":",cf->getUTF(method->name_index), " is in address ", addr);
+	LOG_DBG("Method ", cf.getClassName(),":",cf.getUTF(method.name_index), " is in address ", addr);
 	return addr;
 }
 
-int JvmJit::addCompilationJob(ClassFile* cf, MethodInfo* method)
+int JvmJit::addCompilationJob(ClassFile& cf, MethodInfo& method)
 {
 	std::unique_lock<std::mutex> lock(mutex_jobs);
 	int id = idJobs++;
@@ -88,8 +86,8 @@ void* JvmJit::getAddrFromCompilationJobId(int id)
 		// FIXME: This id is a shit by definition. We must rely on Classfile and MethodInfo to identify the target
 		//jobs.erase(id);
 		lock.unlock();
-		ClassFile* cf = job->cf;
-		MethodInfo* method = job->method;
+		ClassFile& cf = job->cf;
+		MethodInfo& method = job->method;
 		//delete job;
 		return compile(cf, method);
 	}
@@ -99,37 +97,32 @@ void* JvmJit::getAddrFromCompilationJobId(int id)
 void* JvmJit::getAddrFromLoadingJob(LoadingAndCompile* job)
 {
 	std::string className = JVMSpecUtils::
-			getClassNameFromMethodRef(job->callerClass,
-					job->methodRef);
+			getClassNameFromMethodRef(job->callerClass, job->methodRef);
 	std::string methodName = JVMSpecUtils::
-			getMethodNameFromMethodRef(job->callerClass,
-					job->methodRef);
+			getMethodNameFromMethodRef(job->callerClass, job->methodRef);
 	std::string methodDescription = JVMSpecUtils::
-			getMethodDescriptionFromMethodRef(job->callerClass,
-					job->methodRef);
+			getMethodDescriptionFromMethodRef(job->callerClass, job->methodRef);
 
 	// FIXME: find a way to remove job from memory,
 	// remember that this is hard to do because many threads can execute the same code at the same time
 	// and they can be using the reference while one thread is removing the reference
 	// delete job
 
-	ClassFile* calleeClazz = loadAndInit(className);
+	ClassFile& calleeClazz = loadAndInit(className);
 	int16_t idx;
 	do {
-		idx = calleeClazz->getCompatibleMethodIndex(methodName.c_str(),
-					methodDescription.c_str());
-		if (idx == -1) {
+		idx = calleeClazz.getCompatibleMethodIndex(methodName, methodDescription);
+		if (idx == -1 && !calleeClazz.isObjectClass()) {
 			calleeClazz = loader->getParentClass(calleeClazz);
 		}
-	}
-	while (calleeClazz && (idx < 0));
-	if (calleeClazz) {
-		MethodInfo* m = calleeClazz->methods[idx];
+	} while (!calleeClazz.isObjectClass() && (idx < 0));
+
+	if (idx >= 0) {
+		MethodInfo& m = calleeClazz.methods[idx];
 		return compile(calleeClazz, m);
 	}
-	throw new runtime_error("Trying to compile an non-existent method");
+	throw runtime_error("Trying to compile an non-existent method");
 }
-
 
 
 void* JvmJit::getStaticFieldAddress(std::string& class_name,
@@ -140,9 +133,10 @@ void* JvmJit::getStaticFieldAddress(std::string& class_name,
 	return ObjectHandler::instance()->getMemberAddress(ref, fieldName);
 }
 
-bool JvmJit::checkcast_impl(ClassFile* S, string& T)
+
+bool JvmJit::checkcast_impl(ClassFile& S, string& T)
 {
-	std::string S_name = S->getClassName();
+	std::string S_name = S.getClassName();
 	// FIXME: these are not all the case
 	return loader->IsSubclass(S_name, T);
 }

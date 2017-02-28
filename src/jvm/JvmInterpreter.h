@@ -19,22 +19,22 @@ namespace jvm {
 
 	class JvmInterpreter: public jvm::JvmExecuter, public jvm::StackHandle {
 		public:
-			virtual void initiateClass(ClassFile* cf);
+			virtual void initiateClass(ClassFile& cf);
 
-			void generateStaticCall(ClassFile* cf, int32_t methodReference, CodeAttribute* caller);
-			void invokeSpecial(ClassFile* cf, int32_t methodReference, CodeAttribute* caller);
-			void fieldAccess(ClassFile* cf, int16_t fieldRef, bool toWrite = true);
-			void fieldStaticAccess(ClassFile* cf, int16_t fieldRef, bool toWrite = true);
+			void generateStaticCall(ClassFile& cf, int32_t methodReference, CodeAttribute* caller);
+			void invokeSpecial(ClassFile& cf, int32_t methodReference, CodeAttribute* caller);
+			void fieldAccess(const ClassFile& cf, int16_t fieldRef, bool toWrite = true);
+			void fieldStaticAccess(const ClassFile& cf, int16_t fieldRef, bool toWrite = true);
 
-			void createNewObject(ClassFile* cf, int32_t methodReference);
+			void createNewObject(const ClassFile& cf, int32_t methodReference);
 			void createNewRawArray(int type);
 
-			void putConstantInStack(ClassFile* cf, int16_t index, CodeAttribute* caller);
+			void putConstantInStack(ClassFile& cf, int16_t index, CodeAttribute* caller);
 
 		public:
 			JvmInterpreter(ClassLoader* loader, Space* space);
 			virtual ~JvmInterpreter();
-			virtual void execute(ClassFile* cf, MethodInfo* method, std::function<void(JvmExecuter*, void* addr)> fn);
+			virtual void execute(ClassFile& cf, MethodInfo& method, std::function<void(JvmExecuter*, void* addr)> fn);
 	};
 
 }

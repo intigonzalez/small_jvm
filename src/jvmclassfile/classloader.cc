@@ -1,16 +1,13 @@
 #include "classloader.h"
 #include "classfile.h"
+#include "../utilities/Logger.h"
+
 
 ClassLoader* ClassLoader::ms_instance = 0;
 
-ClassLoader::ClassLoader() {
-}
+ClassLoader::~ClassLoader()
+{
 
-ClassLoader::~ClassLoader() {
-	std::unique_lock<std::mutex> lock(cf_mutex);
-	for (map<string, ClassFile*>::iterator it = _cf.begin(); it != _cf.end(); it++) {
-		delete it->second;
-	}
 }
 
 ClassLoader* ClassLoader::Instance() {
@@ -27,7 +24,7 @@ void ClassLoader::Release() {
 	ms_instance = 0;
 }
 
-ClassFile* ClassLoader::getClass(const char* className) {
+ClassFile& ClassLoader::getClass(const std::string& className) {
 	// FIXME: Decrease the time spent in critical section
 
 	// Observe that this operation does not compile
@@ -37,37 +34,40 @@ ClassFile* ClassLoader::getClass(const char* className) {
 		for (unsigned i = 0; i < _paths.size(); i++) {
 			string path = _paths[i] + className;
 			if (_innerExists(path + ".class")) {
-				ClassFile* tmp = new ClassFile(path.c_str());
+				ClassFile tmp(path.c_str());
 				_cf[className] = tmp;
-				return tmp;
+				LOG_DBG(__FUNCTION__, ":", __LINE__, " - ", className, ":", tmp.this_class, ":", _cf[className].this_class);
+				return _cf[className];
 			}
 		}
-		return nullptr;
+		throw std::runtime_error("Unexistent class: " + className);
 	}
 	return _cf[className];
 }
 
-void ClassLoader::AddPath(const char* path) {
+void ClassLoader::AddPath(const std::string path) {
 	string s(path);
 	if (s[s.size() - 1] != '/')
 		s += '/';
 	_paths.push_back(s);
 }
 
-ClassFile* ClassLoader::getParentClass(ClassFile* cf) {
-	if (cf->getClassName() == string("java/lang/Object"))
-		return nullptr;
-	int16_t parent = cf->super_class;
+ClassFile& ClassLoader::getParentClass(const ClassFile& cf) {
+	LOG_DBG("ClassLoader.getParentClass: " + cf.getClassName());
+	if (cf.getClassName() == string("java/lang/Object"))
+		throw std::runtime_error("The class Object has no parent");
 
-	CONSTANT_Class_info* a = (CONSTANT_Class_info*) cf->info[parent - 1];
+	int16_t parent = cf.super_class;
+	CONSTANT_Class_info* a = static_cast<CONSTANT_Class_info*>(cf.info[parent - 1].get());
 
 	int16_t i2 = a->name_index;
 
-	string parentName = cf->getUTF(i2);
-	return getClass(parentName.c_str());
+	string parentName = cf.getUTF(i2);
+	LOG_DBG("ClassLoader.getParentClass: " + parentName);
+	return getClass(parentName);
 }
 
-bool ClassLoader::IsPackage(const char* name) {
+bool ClassLoader::IsPackage(const std::string& name) {
 	struct stat sb;
 	for (unsigned i = 0; i < _paths.size(); i++) {
 		string path = _paths[i] + name;
@@ -77,7 +77,7 @@ bool ClassLoader::IsPackage(const char* name) {
 	return false;
 }
 
-bool ClassLoader::Exists(string name) {
+bool ClassLoader::Exists(const std::string& name) {
 	struct stat sb;
 	for (unsigned i = 0; i < _paths.size(); i++) {
 		string path1 = _paths[i] + name;
@@ -88,27 +88,28 @@ bool ClassLoader::Exists(string name) {
 	return false;
 }
 
-void ClassLoader::AddClass(string name, ClassFile* cf) {
+void ClassLoader::AddClass(const std::string name, ClassFile cf) {
 	std::unique_lock<std::mutex> lock(cf_mutex);
 	_cf[name] = cf;
 }
 
-bool ClassLoader::IsSubclass(string subclass, string superclass) {
-	if (subclass == superclass)
+bool ClassLoader::IsSubclass(const std::string& subclass, const std::string& superclass) {
+	string current_class = subclass;
+	if (current_class == superclass)
 		return true;
 	//ClassFile * super = getClass(superclass.c_str());
 
-	while (subclass != "java/lang/Object") {
-		ClassFile * sub = getClass(subclass.c_str());
-		int16_t parent = sub->super_class;
+	while (current_class != "java/lang/Object") {
+		ClassFile& sub = getClass(subclass.c_str());
+		int16_t parent = sub.super_class;
 
-		CONSTANT_Class_info* a = (CONSTANT_Class_info*) sub->info[parent - 1];
+		auto a = static_cast<CONSTANT_Class_info*> (sub.info[parent - 1].get());
 
 		int16_t i2 = a->name_index;
 
-		string parentName = sub->getUTF(i2);
+		string parentName = sub.getUTF(i2);
 		if (parentName != superclass)
-			subclass = parentName;
+			current_class = parentName;
 		else
 			return true;
 	}

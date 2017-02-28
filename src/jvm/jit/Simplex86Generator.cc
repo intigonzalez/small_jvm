@@ -26,9 +26,9 @@ namespace jit {
 
 std::string Variable::toString() {
 	if (scope == Local || scope == Temporal) {
-		return "[ebp-" + std::to_string(offsetInStack) + "]";
+		return "[rbp-" + std::to_string(offsetInStack) + "]";
 	}
-	jit_value value = { type, scope, n };
+	jit_value value{ type, scope, n };
 	return value.toString();
 }
 
@@ -194,8 +194,8 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 		Variable* v1;
 		CPURegister* reg;
 		CPURegister* reg1;
-		CPURegister* reg2;
-		int int_value;
+		// CPURegister* reg2;
+		// int int_value;
 		void * pointer;
 
 		void deattach(CPURegister* r);
@@ -375,14 +375,14 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			reg = ensureValueIsInRegister(res,variables, used.to_ulong(), false); // the result will be here
 			if (res.meta.type == CharType) {
 				functor.S() << "xor " << reg->name << "," << reg->name << '\n';
-				functor.S() << "mov " <<  reg->name16b << ",[" << reg1->name << "]\n";
+				functor.S() << "mov " <<  reg->name16b << ",[" << reg1->name64b << "]\n";
 			}
 			else if (res.meta.type == Byte) {
 				functor.S() << "xor " << reg->name << "," << reg->name << '\n';
-				functor.S() << "mov " <<  reg->name8b << ",[" << reg1->name << "]\n";
+				functor.S() << "mov " <<  reg->name8b << ",[" << reg1->name64b << "]\n";
 			}
 			else
-				functor.S() << "mov " <<  reg->name << ",[" << reg1->name << "]\n";
+				functor.S() << "mov " <<  reg->name << ",[" << reg1->name64b << "]\n";
 			v = variables.get(res);
 			(*v) = reg;
 			v->selfStored = false;
@@ -393,12 +393,12 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 			used.set(reg1->id);
 			reg = ensureValueIsInRegister(op2, variables, used.to_ulong(), true);
 			if (op2.meta.type == CharType) {
-				functor.S() << "mov [" <<  reg1->name << "]," << reg->name16b << "\n";
+				functor.S() << "mov [" <<  reg1->name64b << "]," << reg->name16b << "\n";
 			}
 			else if (op2.meta.type == Byte)
-				functor.S() << "mov [" <<  reg1->name << "]," << reg->name8b << "\n";
+				functor.S() << "mov [" <<  reg1->name64b << "]," << reg->name8b << "\n";
 			else
-				functor.S() << "mov [" <<  reg1->name << "]," << reg->name << "\n";
+				functor.S() << "mov [" <<  reg1->name64b << "]," << reg->name << "\n";
 			break;
 		case OP_RETURN:
 			if (op1.meta.scope == Useless) {
@@ -417,11 +417,10 @@ void Simplex86Generator::generateBasicBlock(const Vars& variables,
 				}
 			}
 
-			functor.S() << "pop edi\n";
-			functor.S() << "pop esi\n";
-			functor.S() << "pop ebx\n";
+			functor.S() << "pop rbx\n";
 
-			functor.S() << "leave\n";
+			functor.S() << "mov rsp, rbp\n";
+			functor.S() << "pop rbp\n";
 			functor.S() << "ret" << '\n';
 			break;
 		}

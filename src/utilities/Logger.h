@@ -36,13 +36,14 @@ private:
 //	    (*stream).flush();
 	    print_impl(parm...);
 	}
+	
 public:
 	Logger(const char* fileName);
 	virtual ~Logger();
 
 	template<LogLevel level, typename First, typename...Params >
 	void log(First param1, Params...params) {
-		(*stream) << "LOG: <" << texts[level] << "> - ";
+		(*stream) << "<" << texts[level] << "> : ";
 //		(*stream).flush();
 		print_impl(param1, params...);
 	}

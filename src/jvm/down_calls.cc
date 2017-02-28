@@ -44,7 +44,7 @@ Objeto newRawArray(RawArrayTypes type, int length)
 	default:
 		std::cout << "Error in " << __FILE__ << ":" << __FUNCTION__
 		                << ": " << type << "," << length << std::endl;
-		throw new std::exception();
+		throw std::runtime_error("Unknown array type");
 		break;
 	}
 	ArrayType* aType = new ArrayType(name, base);
@@ -53,7 +53,7 @@ Objeto newRawArray(RawArrayTypes type, int length)
 }
 
 Objeto newObject(ClassFile* cf, int idx) {
-	std::string class_name = JVMSpecUtils::getClassNameFromClassRef(cf, idx);
+	std::string class_name = JVMSpecUtils::getClassNameFromClassRef(*cf, idx);
 	// ensure that the class is loaded
 	jvm::JvmJit::instance()->loadAndInit(class_name);
 	Clase* clazz = jvm::JvmJit::instance()->getClassType(class_name);
@@ -73,9 +73,9 @@ void* highlevel_loadClassCompileMethodAndPath(void* job)
 void* getStaticFieldAddress(ClassFile* clazzFile, int idxField)
 {
 	std::string clazzName = JVMSpecUtils::
-			getClassNameFromFieldRef(clazzFile, idxField);
+			getClassNameFromFieldRef(*clazzFile, idxField);
 	std::string fieldName = JVMSpecUtils::
-			getFieldNameFromFieldRef(clazzFile, idxField);
+			getFieldNameFromFieldRef(*clazzFile, idxField);
 //	std::string fieldDescription = JVMSpecUtils::
 //				getFieldDescriptionFromFieldRef(clazzFile, idxField);
 	jvm::JvmJit::instance()->loadAndInit(clazzName);
@@ -86,9 +86,9 @@ void* getStaticFieldAddress(ClassFile* clazzFile, int idxField)
 int getFieldDisplacement(ClassFile* clazzFile, int idxField)
 {
 	std::string clazzName = JVMSpecUtils::
-			getClassNameFromFieldRef(clazzFile, idxField);
+			getClassNameFromFieldRef(*clazzFile, idxField);
 	std::string fieldName = JVMSpecUtils::
-			getFieldNameFromFieldRef(clazzFile, idxField);
+			getFieldNameFromFieldRef(*clazzFile, idxField);
 	Clase* clazz = jvm::JvmJit::instance()->getClassType(clazzName);
 	if (clazz)
 		return clazz->sizeUntil(fieldName) + BASE_OBJECT_SIZE;
@@ -99,10 +99,10 @@ int getFieldDisplacement(ClassFile* clazzFile, int idxField)
 void highlevel_checkcast(ClassFile* clazzFile, int idxClazz, Objeto obj)
 {
 	std::string clazzName = JVMSpecUtils::
-			getClassNameFromClassRef(clazzFile, idxClazz);
+			getClassNameFromClassRef(*clazzFile, idxClazz);
 	// ensure that the class is loaded
 	jvm::JvmJit::instance()->loadAndInit(clazzName);
-	bool b = jvm::JvmJit::instance()->checkcast_impl(clazzFile, clazzName);
+	bool b = jvm::JvmJit::instance()->checkcast_impl(*clazzFile, clazzName);
 	if (!b) {
 		throw(std::runtime_error("Checkcast fails"));
 	}

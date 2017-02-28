@@ -31,6 +31,8 @@
 #include "Quadru.h"
 #include "Routine.h"
 
+#include <stdint.h>
+
 
 #include "../down_calls.h"
 
@@ -163,12 +165,14 @@ public:
 	std::string name;
 	std::string name16b;
 	std::string name8b;
+	std::string name64b;
 
 	CPURegister(const char* name, int number, M2MRelationship<CPURegister*, Variable*>& l) : locations(l) {
 		this->name = name;
 		this->name16b = this->name.substr(1); // FIXME, what a ugly hack. it works only for xi386
 		std::string tmp = this->name16b.substr(0,1);
 		this->name8b = tmp + "l"; // FIXME, even worst and it doesn't work with EDI and ESI
+		this->name64b = name; this->name64b[0] = 'r';
 		this->id = number;
 		type = Integer;
 	}
@@ -225,16 +229,17 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	file.open();
 	functor = ReleaseX86RegisterFunctor(file.getFile());
 	// let start generating
-	functor.S() << "use32" << '\n';
-	functor.S() << "ORG " << (unsigned)buf << '\n';
-	functor.S() << "push ebp" << '\n';
-	functor.S() << "mov ebp,esp" << '\n';
-	if (variables.variables.size() > 0)
-		functor.S() << "sub esp," << variables.variables.size()*4 << '\n';
+	functor.S() << "use64" << '\n';
+	functor.S() << "ORG " << (uintptr_t)buf << '\n';
+	functor.S() << "push rbp" << '\n';
+	functor.S() << "mov rbp,rsp" << '\n';
+	if (variables.variables.size() > 0) {
+		LOG_DBG("NR Variables: " + to_string(variables.variables.size()));
+		functor.S() << "sub rsp," << variables.variables.size()*4 << '\n';
+	}
 
-	functor.S() << "push ebx\n";
-	functor.S() << "push esi\n";
-	functor.S() << "push edi\n";
+	functor.S() << "push rbx\n";
+	functor.S() << "xor rax, rax\n";
 
 	// TODO: let's remove the quad from the routine
 //	routine.q.clear();
@@ -249,8 +254,9 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	std::vector<int> vec;
 	int n = routine.cfg.nodes.size();
 	bool* mark = new bool[n];
-	for (int i = 0 ; i < n ; ++i)
-		mark[i] = false;
+	std::fill(mark, std::next(mark, n), false);
+	// for (int i = 0 ; i < n ; ++i)
+		// mark[i] = false;
 	vec.push_back(0);
 	std::vector<int>::iterator it;
 	while (!vec.empty()) {
@@ -297,7 +303,7 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	file.close();
 	std::string output = file.getFilePath().substr(0, file.getFilePath().size() - 4) + ".bin";
 	//std::string command = "nasm -f bin -o " + output + " " + file.getFilePath();
-	std::string command = "/home/inti/workspace/vm2/fasm " + file.getFilePath()
+	std::string command = "fasm " + file.getFilePath()
 			+ " " + output + " > /dev/null";
 	LOG_DBG(command, " will execute");
 	if (std::system(command.c_str())) {
@@ -310,7 +316,7 @@ void* Simplex86Generator::generate(Routine& routine, CodeSectionManager* manager
 	int nbRead = read(fd2, buf, 4096);
 	if (nbRead == 4096) {
 		LOG_ERR("A bigger buffer is required to load the binary code");
-		throw(std::runtime_error(""));
+		throw std::runtime_error("A bigger buffer is required to load the binary code");
 	}
 	close(fd2);
 

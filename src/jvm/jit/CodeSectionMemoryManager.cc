@@ -9,6 +9,7 @@
 
 #include <sys/mman.h>
 #include <exception>
+#include <stdexcept>
 
 namespace jit {
 
@@ -18,7 +19,7 @@ CodeSectionMemoryManager::CodeSectionMemoryManager(size_t size) {
 	baseAddr = mmap(nullptr, this->size, PROT_EXEC | PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	currentAddr = baseAddr;
 	if (baseAddr == MAP_FAILED) {
-		throw new std::exception();
+		throw std::runtime_error("Failed memory mapping");
 	}
 }
 

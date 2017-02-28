@@ -90,7 +90,7 @@ public:
 };
 
 /**
- * 
+ *
  */
 class CONSTANT_Class_info : public Constant_Info {
 public:
@@ -243,6 +243,10 @@ public:
     int16_t attributes_count; // always 0, FIXME
 
     CodeAttribute(ifstream& f, ClassFile* cf);
+
+		int8_t operator[](int i) {
+			return code[i];
+		}
 
     virtual ~CodeAttribute() { delete [] code;} ;
 };

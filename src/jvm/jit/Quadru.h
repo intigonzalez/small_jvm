@@ -35,7 +35,7 @@ struct jit_value {
 		value_type type:3;
 		value_scope scope:3;
 	} meta;
-	int32_t value;
+	int64_t value;
 	std::string toString() const {
 		if (meta.scope == Constant) {
 			return std::to_string(value);

@@ -9,6 +9,8 @@
 #include <iostream>
 #include <string>
 
+#include <stdint.h>
+
 #include <boost/graph/graphviz.hpp>
 
 #include "../../utilities/Logger.h"
@@ -62,7 +64,7 @@ jit_value jit_constant(int c)
 jit_value jit_address(void* address)
 {
 	jit_value r = { ObjRef, Constant, 0 };
-	r.value = (int32_t) address;
+	r.value = (uintptr_t) address;
 	return r;
 }
 

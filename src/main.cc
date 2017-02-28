@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
 //	}
 
 	if (argc == 1) {
-		cerr << "Usage: "<< argv[0] <<" [-t] class_name [classes_paths]*" << endl;
+		cerr << "Usage: "<< argv[0] <<" [-t method_name] class_name [classes_paths]*" << endl;
 		return -1;
 	}
 	int c = 1;
@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
 		   break;
 	   case '?':
 	   default:
-		   cerr << "Usage: "<< argv[0] <<"  [-t] class_name [classes_paths]*" << endl;
+		   cerr << "Usage: "<< argv[0] <<"  [-t method_name] class_name [classes_paths]*" << endl;
 		   return -1;
 	   }
 	}
@@ -82,31 +82,31 @@ int main(int argc, char* argv[])
 	Space::instance()->setSpaceSize(4*1024*1024);
 	JvmExecuter* exec = JvmJit::instance();
 
-	string tmp(argv[clazzIndex]);
-	string main_class;
-	for (string::iterator it = tmp.begin(), itEnd = tmp.end() ; it != itEnd ; ++it) {
-		if (*it == '.')
-			main_class += '/';
-		else
-			main_class += *it;
+	string main_class(argv[clazzIndex]);
+	for (auto& c: main_class) {
+		if (c == '.')
+			c = '/';
 	}
 
-	ClassFile* cf = exec->loadAndInit(main_class);
-
-	if (cf == nullptr) {
-		cerr << "Wrong class file: " << argv[optind] << '\n';
-		std::exit(1);
-	}
+	cerr << "Ok 1 "  << clazzIndex << " " << main_class << endl;
+	ClassFile& cf = exec->loadAndInit(main_class);
+	cerr << "Ok 2 "  << clazzIndex << " " << argv[clazzIndex] << endl;
 
 	if (testing) {
 		string method_name = argv[clazzIndex - 1];
+		cout << "Executing class: " << main_class << ", method: " << method_name << endl;
 		int result;
-		JvmExecuter::execute(cf,method_name.c_str(),"()I",(JvmJit*)exec, [&result] (JvmExecuter* exec, void * addr) {
-			int(*a)() = (int(*)())addr;
-			int r = a();
-			result = r;
-		});
-		cout << result << endl;
+		try {
+			JvmExecuter::execute(cf, method_name.c_str(),"()I",(JvmJit*)exec, [&result] (JvmExecuter* exec, void * addr) {
+				int(*a)() = (int(*)())addr;
+				int r = a();
+				result = r;
+			});
+			cout << result << endl;
+		}
+		catch (runtime_error e) {
+			std::cerr << e.what() << '\n';
+		}
 	}
 	else {
 		int result;
@@ -171,5 +171,3 @@ int main(int argc, char* argv[])
 	ClassLoader::Release();
 	return 0;
 }
-
-

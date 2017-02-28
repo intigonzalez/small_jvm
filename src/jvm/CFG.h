@@ -24,7 +24,7 @@ public:
 	virtual ~CFG();
 
 	int getBBWithLabel(int l) {
-		for (int i = 0 ; i < nodes.size(); ++i)
+		for (size_t i = 0 ; i < nodes.size(); ++i)
 			if (nodes[i]->label == l)
 				return i;
 		return -1;

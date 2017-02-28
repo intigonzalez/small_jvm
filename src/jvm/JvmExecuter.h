@@ -43,7 +43,7 @@ protected:
 	Objeto classObjects[1000];
 	map<string, int> metaclasses;
 
-	virtual void initiateClass(ClassFile* cf) = 0;
+	virtual void initiateClass(ClassFile& cf) = 0;
 
 public:
 	JvmExecuter(ClassLoader* loader, Space* space);
@@ -58,34 +58,34 @@ public:
 	 * 5 - Execute class initializers
 	 * 6 - Return the class-file ready to be used
 	 */
-	ClassFile* loadAndInit(string& class_name);
+	ClassFile& loadAndInit(const std::string& class_name);
 
-	virtual void execute(ClassFile* cf, MethodInfo* method, std::function<void(JvmExecuter*, void* addr)> fn) = 0;
+	virtual void execute(ClassFile& cf, MethodInfo& method, std::function<void(JvmExecuter*, void* addr)> fn) = 0;
 
-	static void execute(ClassFile* cf, const char* method, const char* description,
+	static void execute(ClassFile& cf, const std::string& method, const std::string& description,
 			JvmExecuter* exec, std::function<void(JvmExecuter*, void* addr)> fn) {
-		int16_t index = cf->getCompatibleMethodIndex(method, description);
-		if (index < 0 || index >= cf->methods_count)
-			throw new exception();
+		int16_t index = cf.getCompatibleMethodIndex(method, description);
+		if (index < 0 || index >= cf.methods_count)
+			throw runtime_error("Wrong method index in class file");
 
-		MethodInfo* mi = cf->methods[index];
+		auto mi = cf.methods[index];
 
-		if ((mi->access_flags & ACC_STATIC))
+		if ((mi.access_flags & ACC_STATIC))
 			exec->execute(cf, mi, fn);
-		else throw new exception(/*"Executing non-static method as static"*/);
+		else throw runtime_error("Executing non-static method as static");
 	}
 
 //	static int countParameters(string s);
 
-	Type* getType(string javaDescription);
-	Type* buildInMemoryClass(ClassFile* cf); // fixme : This should be private and thread safe
+	Type* getType(const std::string javaDescription);
+	Type* buildInMemoryClass(const ClassFile& cf); // fixme : This should be private and thread safe
 
-	void callStaticNativeMethod(string signature, Clase* clazz);
+	void callStaticNativeMethod(const std::string signature, Clase* clazz);
 
 	// nullptr is the class is not loaded
-	ClassFile* getInitiatedClass(std::string& class_name);
+	ClassFile& getInitiatedClass(const std::string& class_name);
 	// nullptr if the class is not loaded and initialized
-	Clase* getClassType(std::string& class_name);
+	Clase* getClassType(const std::string& class_name);
 };
 
 } /* namespace jvm */

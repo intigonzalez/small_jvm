@@ -21,16 +21,16 @@
  */
 class JVMSpecUtils {
 public:
-	static int countOfParameter(std::string& s);
-	static int countOfParameter(ClassFile* clazz, int idxInPoolToMethodRef);
-	static std::string getClassNameFromClassRef(ClassFile* clazz, int ref);
-	static std::string getClassNameFromMethodRef(ClassFile* clazz, int ref);
-	static std::string getMethodNameFromMethodRef(ClassFile* clazz, int ref);
-	static std::string getMethodDescriptionFromMethodRef(ClassFile* clazz, int ref);
+	static int countOfParameter(const std::string& s);
+	static int countOfParameter(const ClassFile& clazz, int idxInPoolToMethodRef);
+	static std::string getClassNameFromClassRef(const ClassFile& clazz, int ref);
+	static std::string getClassNameFromMethodRef(const ClassFile& clazz, int ref);
+	static std::string getMethodNameFromMethodRef(const ClassFile& clazz, int ref);
+	static std::string getMethodDescriptionFromMethodRef(const ClassFile& clazz, int ref);
 
-	static std::string getClassNameFromFieldRef(ClassFile* clazz, int ref);
-	static std::string getFieldNameFromFieldRef(ClassFile* clazz, int ref);
-	static std::string getFieldDescriptionFromFieldRef(ClassFile* clazz, int ref);
+	static std::string getClassNameFromFieldRef(const ClassFile& clazz, int ref);
+	static std::string getFieldNameFromFieldRef(const ClassFile& clazz, int ref);
+	static std::string getFieldDescriptionFromFieldRef(const ClassFile& clazz, int ref);
 };
 
 

@@ -29,7 +29,7 @@ JitCompiler::~JitCompiler() {
 
 }
 
-void* JitCompiler::compile(ClassFile* cf, MethodInfo* method){
+void* JitCompiler::compile(ClassFile& cf, MethodInfo& method){
 	// first generate IR with quadruplos
 	Routine procedure = toQuadruplus(cf, method);
 	Simplex86Generator generator;
@@ -37,18 +37,18 @@ void* JitCompiler::compile(ClassFile* cf, MethodInfo* method){
 	return addr;
 }
 
-void JitCompiler::cfg(ClassFile* cf, MethodInfo* method, jvm::CFG& cfg) {
+void JitCompiler::cfg(ClassFile& cf, MethodInfo& method, jvm::CFG& cfg) {
 	vector< pair< int, int > > bytecode2qua;
 	set<int> basicBlocksStart;
 	int32_t branch1;
-	unsigned char branch2;
+	uint8_t branch2;
 
 	basicBlocksStart.insert(0);
 
-	CodeAttribute* code = method->code;
+	CodeAttribute* code = method.code;
 	int index = 0;
 	while (index < code->code_length) {
-		unsigned char opcode = (unsigned char) (code->code[index]);
+		uint8_t opcode = (uint8_t) (code->code[index]);
 		switch (opcode) {
 			case aconst_null:
 			case aload_0:
@@ -112,7 +112,7 @@ void JitCompiler::cfg(ClassFile* cf, MethodInfo* method, jvm::CFG& cfg) {
 			case if_icmpgt:
 			case if_icmpne:
 				branch1 = (char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch2 = (uint8_t)code->code[index + 2];
 				branch1 = index + ((branch1 << 8) | branch2);
 				basicBlocksStart.insert(branch1);
 				bytecode2qua.push_back( pair<int, int>(index, branch1));
@@ -126,7 +126,7 @@ void JitCompiler::cfg(ClassFile* cf, MethodInfo* method, jvm::CFG& cfg) {
 			case ifeq:
 			case ifgt:
 				branch1 = (char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch2 = (uint8_t)code->code[index + 2];
 				branch1 = index + ((branch1 << 8) | branch2);
 				basicBlocksStart.insert(branch1);
 				bytecode2qua.push_back( pair<int, int>(index, branch1));
@@ -141,7 +141,7 @@ void JitCompiler::cfg(ClassFile* cf, MethodInfo* method, jvm::CFG& cfg) {
 				break;
 			case op_goto:
 				branch1 = (char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch2 = (uint8_t)code->code[index + 2];
 				branch1 = index + ((branch1 << 8) | branch2);
 				basicBlocksStart.insert(branch1);
 				bytecode2qua.push_back( pair<int, int>(index, branch1));
@@ -167,9 +167,9 @@ void JitCompiler::cfg(ClassFile* cf, MethodInfo* method, jvm::CFG& cfg) {
 				index += 3;
 				break;
 			default:
-				cerr << "Unknown opcode " << (unsigned) (unsigned char) code->code[index] << endl;
+				cerr << "Unknown opcode " << (unsigned) (uint8_t) code->code[index] << endl;
 //						<< " at " << cf->getClassName() << ":" << method_name << ":" << index << endl;
-				throw new exception();
+				throw runtime_error("Unkown opcode");
 				break;
 		} // switch
 	} // while
@@ -177,11 +177,10 @@ void JitCompiler::cfg(ClassFile* cf, MethodInfo* method, jvm::CFG& cfg) {
 	for (auto& label : basicBlocksStart)
 		cfg.addVertex(new BasicBlock(label));
 
-	for (vector< pair< int, int > >::iterator it = bytecode2qua.begin(), itEnd = bytecode2qua.end() ; it != itEnd ; ++it){
-		pair<int,int> p = *it;
+	for (const auto& p: bytecode2qua){
 		int src = p.first; // src of a jump in bytecode index
 		int trg = p.second; // trg of jump in bytecode index
-		std::set<int>::iterator it2 = basicBlocksStart.lower_bound(src);
+		auto it2 = basicBlocksStart.lower_bound(src);
 		if (it2 != basicBlocksStart.begin() && (*it2 != src))
 			--it2;
 		int idxSrc = cfg.getBBWithLabel(*it2);
@@ -193,7 +192,7 @@ void JitCompiler::cfg(ClassFile* cf, MethodInfo* method, jvm::CFG& cfg) {
 	for (auto& label : basicBlocksStart)
 		if (label >= 3) {
 			int src = label - 3; // FIXME, maybe just by chance the value is opcode goto
-			unsigned char opcode = (unsigned char)method->code->code[src];
+			uint8_t opcode = (uint8_t)method.code->code[src];
 			if (opcode != op_goto) {
 				// there is a natural block edge
 				src = label - 1;
@@ -208,23 +207,22 @@ void JitCompiler::cfg(ClassFile* cf, MethodInfo* method, jvm::CFG& cfg) {
 		}
 }
 
-jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
+jit::Routine JitCompiler::toQuadruplus(ClassFile& cf, MethodInfo& method) {
 	SimpleStack<jit_value, 17> values;
 	vector< pair< int, int > > bytecode2qua;
 	set<int> labels;
 	jit_value v1,v2,v, vTmp1, vTmp2;
 //	Objeto ref;
 	int32_t a, b, branch1;
-	unsigned char branch2;
+	uint8_t branch2;
 	int32_t i2;
 	int count, count2;
-	MethodInfo* tmp;
 	Clase* javaClass;
 	std::string sTmp;
 
-	std::string currentMethodDescriptor = cf->getUTF(method->descriptor_index);
+	std::string currentMethodDescriptor = cf.getUTF(method.descriptor_index);
 	int argumentsCount = JVMSpecUtils::countOfParameter(currentMethodDescriptor);
-	if ((method->access_flags & ACC_STATIC) == 0)
+	if ((method.access_flags & ACC_STATIC) == 0)
 		argumentsCount++;
 	jit::Routine procedure(argumentsCount);
 
@@ -237,25 +235,25 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //	long long l;
 	OP_QUAD oper;
 	//AttributeInfo* ai = method->attributes[0];
-	string method_name = cf->getUTF(method->name_index);
-	CodeAttribute* code = method->code;
+	string method_name = cf.getUTF(method.name_index);
+	CodeAttribute* code = method.code;
 	if (!code) return procedure;
 	int index = 0;
-	int nextBlockStartIndex = 0;
+	uint32_t nextBlockStartIndex = 0;
 	while (index < code->code_length) {
 		if (nextBlockStartIndex< blocksStart.size() && blocksStart[nextBlockStartIndex] == index) {
 			branch1 = procedure.cfg.getBBWithLabel(index);
 			procedure.currentBB = procedure.cfg.nodes[branch1];
 			nextBlockStartIndex++;
 		}
-		unsigned char opcode = (unsigned char) (code->code[index]);
+		uint8_t opcode = (uint8_t) (code->code[index]);
 		switch (opcode) {
 			case aconst_null:
 				values.push(jit_null());
 				index++;
 				break;
 			case aload:
-				b = (unsigned char)code->code[index+1];
+				b = (uint8_t)code->code[index+1];
 				values.push(jit_local_field(b, ObjRef));
 				index += 2;
 				break;
@@ -276,7 +274,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				index++;
 				break;
 //				case astore:
-//					b = (unsigned char)code->code[index+1];
+//					b = (uint8_t)code->code[index+1];
 //					setLocal(b, popRef());
 //					index += 2;
 //					break;
@@ -390,7 +388,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				v2 = values.pop(); // b
 				v1 = values.pop(); // a
 				branch1 = (char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch2 = (uint8_t)code->code[index + 2];
 				branch1 = index + ((branch1 << 8) | branch2);
 				labels.insert(branch1);
 				oper = JGE;
@@ -417,7 +415,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				else if (opcode == ifeq) oper = JG;
 
 				branch1 = (char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch2 = (uint8_t)code->code[index + 2];
 				branch1 = index + ((branch1 << 8) | branch2);
 				labels.insert(branch1);
 				procedure.jit_regular_operation(oper, v1, jit_constant(0), jit_label(branch1));
@@ -427,7 +425,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					ref = popRef();
 //					if (!ref) {
 //						branch1 = (char) code->code[index + 1];
-//						branch2 = (unsigned char)code->code[index + 2];
+//						branch2 = (uint8_t)code->code[index + 2];
 //						index += (branch1 << 8) | branch2;
 //					} else
 //						index += 3;
@@ -436,7 +434,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 //					ref = popRef();
 //					if (ref) {
 //						branch1 = (char) code->code[index + 1];
-//						branch2 = (unsigned char)code->code[index + 2];
+//						branch2 = (uint8_t)code->code[index + 2];
 //						index += (branch1 << 8) | branch2;
 //					} else
 //						index += 3;
@@ -504,22 +502,22 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 			case iinc:
 				a = code->code[index + 2];
 				v2 = jit_constant(a);
-				b = (unsigned char) code->code[index + 1];
+				b = (uint8_t) code->code[index + 1];
 				v1 = jit_local_field(b, Integer);
 				procedure.jit_regular_operation(IINC, v1,v2, useless_value);
 				index += 3;
 				break;
 			case op_goto:
 				branch1 = (char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch2 = (uint8_t)code->code[index + 2];
 				branch1 = index + ((branch1 << 8) | branch2);
 				procedure.jit_regular_operation(GOTO, jit::useless_value,jit::useless_value, jit_label(branch1));
 				labels.insert(branch1);
 				index+=3;
 				break;
 			case invokestatic:
-				branch1 = (unsigned char) code->code[index + 1];
-				branch2 = (unsigned char) code->code[index + 2];
+				branch1 = (uint8_t) code->code[index + 1];
+				branch2 = (uint8_t) code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 				// push all the parameters
 				count2 = count = JVMSpecUtils::countOfParameter(cf, i2);
@@ -529,35 +527,37 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					count--;
 				}
 				// TODO: Check if the error (inexistent method) is triggered at execution or compilation time.
-				tmp = getMethodToCall(cf, i2);
-				if (tmp && tmp->address) {
-					// the method is compiled
-					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
-					values.push(procedure.jit_regular_operation(
-							PLAIN_CALL,
-							jit_address(tmp->address),
-							jit_constant(count2), Integer));
-				} else {
-					// TODO: the class is not loaded, generate stub method to:
-					// 1 - Load the class
-					// 2 - Fix the wrong pointer
-					// 3 - Compile the method
-					// 4 - Fix the wrong pointer
-					// 5 - Call the method
-					jvm::LoadingAndCompile* task =
-							new jvm::LoadingAndCompile(cf, i2);
-					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
-					values.push(procedure.jit_regular_operation(
-							CALL_STATIC,
-							jit_address(task),
-							jit_constant(count2),
-							Integer));
+				{
+					auto tmp = getMethodToCall(cf, i2);
+					if (tmp.address) {
+						// the method is compiled
+						// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
+						values.push(procedure.jit_regular_operation(
+								PLAIN_CALL,
+								jit_address(tmp.address),
+								jit_constant(count2), Integer));
+					} else {
+						// TODO: the class is not loaded, generate stub method to:
+						// 1 - Load the class
+						// 2 - Fix the wrong pointer
+						// 3 - Compile the method
+						// 4 - Fix the wrong pointer
+						// 5 - Call the method
+						jvm::LoadingAndCompile* task =
+								new jvm::LoadingAndCompile(cf, i2);
+						// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
+						values.push(procedure.jit_regular_operation(
+								CALL_STATIC,
+								jit_address(task),
+								jit_constant(count2),
+								Integer));
+					}
 				}
 				index += 3;
 				break;
 			case invokespecial:
-				branch1 = (unsigned char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch1 = (uint8_t) code->code[index + 1];
+				branch2 = (uint8_t)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 				// push all the parameters
 				count2 = count = JVMSpecUtils::countOfParameter(cf, i2) + 1; // +1 because of this
@@ -567,38 +567,40 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					count--;
 				}
 				// TODO: Check if the error (inexistent method) is triggered at execution or compilation time.
-				tmp = getMethodToCall(cf, i2);
-				if (tmp && tmp->address) {
-					// the method is compiled
-					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
-					procedure.jit_regular_operation(
-							PLAIN_CALL,
-							jit_address(tmp->address),
-							jit_constant(count2),
-							Void);
-				} else {
-					// TODO: the class is not loaded, generate stub method to:
-					// 1 - Load the class
-					// 2 - Fix the wrong pointer
-					// 3 - Compile the method
-					// 4 - Fix the wrong pointer
-					// 5 - Call the method
-					jvm::LoadingAndCompile* task =
-							new jvm::LoadingAndCompile(cf, i2);
-					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
-					procedure.jit_regular_operation(
-							CALL_STATIC,
-							jit_address(task),
-							jit_constant(count2),
-							Void);
+				{
+					auto tmp = getMethodToCall(cf, i2);
+					if (tmp.address) {
+						// the method is compiled
+						// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
+						procedure.jit_regular_operation(
+								PLAIN_CALL,
+								jit_address(tmp.address),
+								jit_constant(count2),
+								Void);
+					} else {
+						// TODO: the class is not loaded, generate stub method to:
+						// 1 - Load the class
+						// 2 - Fix the wrong pointer
+						// 3 - Compile the method
+						// 4 - Fix the wrong pointer
+						// 5 - Call the method
+						jvm::LoadingAndCompile* task =
+								new jvm::LoadingAndCompile(cf, i2);
+						// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
+						procedure.jit_regular_operation(
+								CALL_STATIC,
+								jit_address(task),
+								jit_constant(count2),
+								Void);
+					}
 				}
 				index += 3;
 				break;
 			case invokevirtual:
 				// FIXME I am doing something wrong because the implementation is the same
 				// as invokespecial.
-				branch1 = (unsigned char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch1 = (uint8_t) code->code[index + 1];
+				branch2 = (uint8_t)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 				// push all the parameters
 				count2 = count = JVMSpecUtils::countOfParameter(cf, i2) + 1; // +1 because of this
@@ -608,30 +610,32 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 					count--;
 				}
 				// TODO: Check if the error (inexistent method) is triggered at execution or compilation time.
-				tmp = getMethodToCall(cf, i2);
-				if (tmp && tmp->address) {
-					// the method is compiled
-					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
-					values.push(procedure.jit_regular_operation(
-							PLAIN_CALL,
-							jit_address(tmp->address),
-							jit_constant(count2),
-							Integer));
-				} else {
-					// TODO: the class is not loaded, generate stub method to:
-					// 1 - Load the class
-					// 2 - Fix the wrong pointer
-					// 3 - Compile the method
-					// 4 - Fix the wrong pointer
-					// 5 - Call the method
-					jvm::LoadingAndCompile* task =
-							new jvm::LoadingAndCompile(cf, i2);
-					// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
-					values.push(procedure.jit_regular_operation(
-							CALL_STATIC,
-							jit_address(task),
-							jit_constant(count2),
-							Integer));
+				{
+					auto tmp = getMethodToCall(cf, i2);
+					if (tmp.address) {
+						// the method is compiled
+						// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
+						values.push(procedure.jit_regular_operation(
+								PLAIN_CALL,
+								jit_address(tmp.address),
+								jit_constant(count2),
+								Integer));
+					} else {
+						// TODO: the class is not loaded, generate stub method to:
+						// 1 - Load the class
+						// 2 - Fix the wrong pointer
+						// 3 - Compile the method
+						// 4 - Fix the wrong pointer
+						// 5 - Call the method
+						jvm::LoadingAndCompile* task =
+								new jvm::LoadingAndCompile(cf, i2);
+						// FIXME: Ugly assumption regarding the return type of the method. Why Integer?
+						values.push(procedure.jit_regular_operation(
+								CALL_STATIC,
+								jit_address(task),
+								jit_constant(count2),
+								Integer));
+					}
 				}
 				index += 3;
 				break;
@@ -651,15 +655,15 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				index++;
 				break;
 			case op_new:
-				branch1 = (unsigned char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch1 = (uint8_t) code->code[index + 1];
+				branch2 = (uint8_t)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 
 				procedure.jit_regular_operation(PUSH_ARG,
 						jit_constant(i2));
 
 				procedure.jit_regular_operation(PUSH_ARG,
-						jit_address(cf));
+						jit_address(cf.myAddr()));
 
 				values.push(procedure.jit_regular_operation(PLAIN_CALL,
 						jit_address((void*)&newObject),
@@ -719,8 +723,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				index++;
 				break;
 			case putfield:
-				branch1 = (unsigned char) code->code[index + 1];
-				branch2 = (unsigned char) code->code[index + 2];
+				branch1 = (uint8_t) code->code[index + 1];
+				branch2 = (uint8_t) code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 				v = values.pop(); // value
 				v2 = values.pop(); // object
@@ -738,7 +742,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 							jit_constant(i2));
 
 					procedure.jit_regular_operation(PUSH_ARG,
-							jit_address(cf));
+							jit_address(cf.myAddr()));
 
 					v1 = procedure.jit_regular_operation(PLAIN_CALL,
 							jit_address((void*)&getFieldDisplacement),
@@ -754,15 +758,13 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				break;
 			case putstatic:
 
-				branch1 = (unsigned char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch1 = (uint8_t) code->code[index + 1];
+				branch2 = (uint8_t)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 
-				procedure.jit_regular_operation(PUSH_ARG,
-						jit_constant(i2));
+				procedure.jit_regular_operation(PUSH_ARG,	jit_constant(i2));
 
-				procedure.jit_regular_operation(PUSH_ARG,
-						jit_address(cf));
+				procedure.jit_regular_operation(PUSH_ARG,	jit_address(cf.myAddr()));
 
 				v1 = procedure.jit_regular_operation(PLAIN_CALL,
 						jit_address((void*)&getStaticFieldAddress),
@@ -770,14 +772,12 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 						Integer);
 
 				v = values.pop(); // value
-				procedure.jit_regular_operation(
-						MOV_TO_ADDR,
-						v1, v);
+				procedure.jit_regular_operation(MOV_TO_ADDR, v1, v);
 				index += 3;
 				break;
 			case getfield:
-				branch1 = (unsigned char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch1 = (uint8_t)code->code[index + 1];
+				branch2 = (uint8_t)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 
 				v2 = values.pop(); // object
@@ -795,7 +795,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 							jit_constant(i2));
 
 					procedure.jit_regular_operation(PUSH_ARG,
-							jit_address(cf));
+							jit_address(cf.myAddr()));
 
 					v1 = procedure.jit_regular_operation(PLAIN_CALL,
 							jit_address((void*)&getFieldDisplacement),
@@ -814,14 +814,13 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				index += 3;
 				break;
 			case getstatic:
-				branch1 = (unsigned char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch1 = (uint8_t) code->code[index + 1];
+				branch2 = (uint8_t)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 				procedure.jit_regular_operation(PUSH_ARG,
 						jit_constant(i2));
 
-				procedure.jit_regular_operation(PUSH_ARG,
-						jit_address(cf));
+				procedure.jit_regular_operation(PUSH_ARG, jit_address(cf.myAddr())); // FIXME, horrible using the class object
 
 				v1 = procedure.jit_regular_operation(PLAIN_CALL,
 						jit_address((void*)&getStaticFieldAddress),
@@ -837,20 +836,20 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				index += 3;
 				break;
 			case ldc:
-				i2 = (unsigned char)code->code[index + 1];
+				i2 = (uint8_t)code->code[index + 1];
 				values.push(getConstant(cf, i2, code));
 				index += 2;
 				break;
 			case sipush:
-				branch1 = (unsigned char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch1 = (uint8_t) code->code[index + 1];
+				branch2 = (uint8_t)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 				values.push(jit_constant(i2));
 				index += 3;
 				break;
 			case checkcast:
-				branch1 = (unsigned char) code->code[index + 1];
-				branch2 = (unsigned char)code->code[index + 2];
+				branch1 = (uint8_t) code->code[index + 1];
+				branch2 = (uint8_t)code->code[index + 2];
 				i2 = (branch1 << 8) | branch2;
 				// the object
 				procedure.jit_regular_operation(PUSH_ARG,
@@ -860,7 +859,7 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 						jit_constant(i2));
 				// this classfile
 				procedure.jit_regular_operation(PUSH_ARG,
-								jit_address(cf));
+								jit_address(cf.myAddr()));
 				// calling
 				v1 = procedure.jit_regular_operation(PLAIN_CALL,
 								jit_address((void*)&getFieldDisplacement),
@@ -869,9 +868,9 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 				index+=3;
 				break;
 			default:
-				cerr << "Unknown opcode " << (unsigned) (unsigned char) code->code[index]
-						<< " at " << cf->getClassName() << ":" << method_name << ":" << index << endl;
-				throw new exception();
+				cerr << "Unknown opcode " << (unsigned) (uint8_t) code->code[index]
+						<< " at " << cf.getClassName() << ":" << method_name << ":" << index << endl;
+				throw runtime_error("Unknown opcode");
 				break;
 		} // switch
 	} // while
@@ -882,8 +881,8 @@ jit::Routine JitCompiler::toQuadruplus(ClassFile* cf, MethodInfo* method) {
 	return procedure;
 }
 
-jit_value JitCompiler::getConstant(ClassFile* cf, int16_t index, CodeAttribute* caller) {
-	Constant_Info* ri = (Constant_Info*)(cf->info[index - 1]);
+jit_value JitCompiler::getConstant(ClassFile& cf, int16_t index, CodeAttribute* caller) {
+	Constant_Info* ri = (Constant_Info*)(cf.info[index - 1].get());
 	if (ri->tag() == CONSTANT_Integer) {
 		CONSTANT_Integer_info* ii = (CONSTANT_Integer_info*)(ri);
 		return jit_constant(ii->value);
@@ -923,26 +922,20 @@ jit_value JitCompiler::getConstant(ClassFile* cf, int16_t index, CodeAttribute* 
 	}
 }
 
-MethodInfo* JitCompiler::getMethodToCall(ClassFile* cf, int16_t idx)
+MethodInfo& JitCompiler::getMethodToCall(ClassFile& cf, int16_t idx)
 {
-	std::string className = JVMSpecUtils::
-			getClassNameFromMethodRef(cf, idx);
+	std::string className = JVMSpecUtils::getClassNameFromMethodRef(cf, idx);
 
-	ClassFile* otherClazz = jvm::JvmJit::instance()->getInitiatedClass(className);
+	ClassFile& otherClazz = jvm::JvmJit::instance()->getInitiatedClass(className);
 
-	if (!otherClazz) return nullptr;
+	std::string methodName = JVMSpecUtils::getMethodNameFromMethodRef(cf, idx);
+	std::string methodDescription = JVMSpecUtils::getMethodDescriptionFromMethodRef(cf, idx);
 
-	std::string methodName = JVMSpecUtils::
-			getMethodNameFromMethodRef(cf, idx);
-	std::string methodDescription = JVMSpecUtils::
-			getMethodDescriptionFromMethodRef(cf, idx);
-
-	int16_t index = otherClazz->getCompatibleMethodIndex(methodName.c_str(),
-					methodDescription.c_str());
-	if (index >= 0 && index < otherClazz->methods_count) {
-		return otherClazz->methods[index];
+	int16_t index = otherClazz.getCompatibleMethodIndex(methodName,	methodDescription);
+	if (index >= 0 && index < otherClazz.methods_count) {
+		return otherClazz.methods[index];
 	}
-	else throw new runtime_error("Trying to compile an non-existent method");
+	throw runtime_error("Trying to compile a non-existent method");
 }
 
 } /* namespace jit */

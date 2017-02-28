@@ -12,6 +12,7 @@
 #include <dlfcn.h>
 
 #include "down_calls.h"
+#include "../utilities/Logger.h"
 
 using namespace std;
 
@@ -37,44 +38,49 @@ JvmExecuter::~JvmExecuter()
 
 }
 
-ClassFile* JvmExecuter::loadAndInit(string& class_name)
+ClassFile& JvmExecuter::loadAndInit(const string& class_name)
 {
 	// this operation is not affected by the garbage collector
-	ClassFile* cf = loader->getClass(class_name.c_str());
-	if (cf) {
-		if (getInitiatedClass(class_name)) return cf;
-		ClassFile* tmp = cf;
-		stack<ClassFile*> classesToInitialize;
-		while (tmp) {
-			classesToInitialize.push(tmp);
-			// do this in a different thread or not?
-			// FIXME: this operation is affected by the garbage collector
-			// FIXMEW: it also is problematic because it involves reading classes from Disk
-			buildInMemoryClass(tmp);
-			// this operation is not affected by the garbage collector
-			tmp = loader->getParentClass(tmp);
-		}
-		// now, initialize classes
-		while (!classesToInitialize.empty()) {
-			tmp = classesToInitialize.top();
-			classesToInitialize.pop();
-			initiateClass(tmp);
-		}
+	LOG_DBG("Loading class: " + class_name);
+	ClassFile& cf = loader->getClass(class_name);
+	LOG_DBG("Class loaded: ", cf.getClassName(), " ", cf.info.size());
+	if (classes.find(class_name) != classes.end()) {
 		return cf;
 	}
-	throw new std::runtime_error("Trying to load inexistent class");
+	ClassFile& tmp = cf;
+	std::stack<std::string> classesToInitialize;
+	while (!tmp.isObjectClass()) {
+		classesToInitialize.push(tmp.getClassName());
+		// do this in a different thread or not?
+		// FIXME: this operation is affected by the garbage collector
+		// FIXME: it also is problematic because it involves reading classes from Disk
+		buildInMemoryClass(tmp);
+		// this operation is not affected by the garbage collector
+		LOG_DBG("jejej 111: " + tmp.getClassName());
+		tmp = loader->getParentClass(tmp);
+		LOG_DBG("jejej 222: " + class_name);
+	}
+	LOG_DBG("jejej: " + class_name);
+	// now, initialize classes
+	while (!classesToInitialize.empty()) {
+		std::string name = classesToInitialize.top();
+		classesToInitialize.pop();
+		ClassFile& tmp = loader->getClass(name);
+		initiateClass(tmp);
+	}
+	return cf;
 }
 
-ClassFile* JvmExecuter::getInitiatedClass(std::string& class_name)
+ClassFile& JvmExecuter::getInitiatedClass(const std::string& class_name)
 {
 	// FIXME : Synchronize
 	if (classes.find(class_name) != classes.end()) {
-		return loader->getClass(class_name.c_str());
+		return loader->getClass(class_name);
 	}
-	return nullptr;
+	throw std::runtime_error("Unknown class: " + class_name);
 }
 
-Clase* JvmExecuter::getClassType(std::string& class_name)
+Clase* JvmExecuter::getClassType(const std::string& class_name)
 {
 	// FIXME : Synchronize
 	if (classes.find(class_name) != classes.end()) {
@@ -84,9 +90,8 @@ Clase* JvmExecuter::getClassType(std::string& class_name)
 	return nullptr;
 }
 
-Type* JvmExecuter::getType(string javaDescription)
+Type* JvmExecuter::getType(const std::string javaDescription)
 {
-	ClassFile* tmp;
 	Type* t;
 	Type* baseType;
 	switch (javaDescription[0]) {
@@ -106,10 +111,11 @@ Type* JvmExecuter::getType(string javaDescription)
 		t = rawTypes["bool"]; // FIXME
 		break;
 	case 'L':
-		javaDescription = javaDescription.substr(1,
-		                javaDescription.size() - 2);
-		tmp = loader->getClass(javaDescription.c_str());
-		t = buildInMemoryClass(tmp);
+		{
+			std::string rest = javaDescription.substr(1, javaDescription.size() - 2);
+			ClassFile& tmp = loader->getClass(rest);
+			t = buildInMemoryClass(tmp);
+		}
 		break;
 	case '[':
 		baseType = getType(javaDescription.substr(1));
@@ -118,26 +124,24 @@ Type* JvmExecuter::getType(string javaDescription)
 	default:
 		cerr << javaDescription << " line : " << __LINE__ << " FILE: "
 		                << __FILE__ << endl;
-		throw new std::exception();
+		throw std::runtime_error("Unknown Java type: " + javaDescription);
 	}
 	return t;
 }
 
-Type* JvmExecuter::buildInMemoryClass(ClassFile* cf)
+Type* JvmExecuter::buildInMemoryClass(const ClassFile& cf)
 {
-	string cname = cf->getClassName();
+	string cname = cf.getClassName();
 	if (classes.find(cname) != classes.end())
 		return classes[cname];
 	Clase* a = new Clase(cname);
 	Clase* classA = new Clase(cname);
 	classes[cname] = a;
-	for (int i = 0; i < cf->fields_count; ++i) {
-
-		FieldInfo* fi = cf->fields[i];
-		string name = cf->getUTF(fi->name_index);
-		string desc = cf->getUTF(fi->descriptor_index);
+	for (const auto& fi: cf.fields) {
+		string name = cf.getUTF(fi.name_index);
+		string desc = cf.getUTF(fi.descriptor_index);
 		Type* t = getType(desc);
-		if ((fi->access_flags & ACC_STATIC) != 0)
+		if ((fi.access_flags & ACC_STATIC) != 0)
 			classA->addMember(name, t);
 		else
 			a->addMember(name, t);
@@ -162,7 +166,6 @@ void JvmExecuter::callStaticNativeMethod(string signature, Clase* clazz)
 	}
 	if (f) {
 		// call function
-
 	}
 
 }

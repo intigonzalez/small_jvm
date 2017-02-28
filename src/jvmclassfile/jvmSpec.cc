@@ -101,7 +101,7 @@ MethodInfo::MethodInfo(ifstream& f, ClassFile* cf) {
 		int32_t tmp2;
 		Load(&tmp1, f);
 		Load(&tmp2, f);
-		if (((Constant_Info_UTF8*) cf->info[tmp1 - 1])->Equals("Code"))
+		if (((Constant_Info_UTF8*) cf->info[tmp1 - 1].get())->Equals("Code"))
 			this->code = new CodeAttribute(f, cf);
 		else
 			f.seekg(tmp2, ios_base::cur);
@@ -139,7 +139,7 @@ FieldInfo::FieldInfo(ifstream& f, ClassFile* cf) {
 	Load(&name_index, f);
 	Load(&descriptor_index, f);
 	Load(&attributes_count, f);
-	AttributeInfo * af;
+	// AttributeInfo * af;
 	for (int i = 0; i < attributes_count; i++) {
 		int16_t tmp1;
 		int32_t tmp2;
@@ -150,6 +150,3 @@ FieldInfo::FieldInfo(ifstream& f, ClassFile* cf) {
 
 	attributes_count = 0;
 }
-
-
-

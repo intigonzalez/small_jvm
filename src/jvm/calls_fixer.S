@@ -12,8 +12,8 @@ loadClassCompileMethodAndPath:
 	call highlevel_loadClassCompileMethodAndPath
 	addl $0x04, %esp
 	jmp patch
-
+# TODO FIXME
 patch:
 	movl (%esp), %ecx
 	movl %eax, -6(%ecx)
-	jmp *%eax
+	jmp *%rax
